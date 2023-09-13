@@ -80,8 +80,8 @@ func (r *REPL) Run(c net.Conn, clientId uuid.UUID, prompt string) {
 		reader = c
 		writer = c
 	}
-	scanner := bufio.NewScanner((reader))
-	replConfig := &REPLConfig{writer: writer, clientId: clientId}
+	// scanner := bufio.NewScanner((reader))
+	// replConfig := &REPLConfig{writer: writer, clientId: clientId}
 	// Begin the repl loop!
 	panic("function not yet implemented");
 }
