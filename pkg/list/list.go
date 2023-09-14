@@ -38,7 +38,14 @@ func (list *List) PeekTail() *Link {
 // Add an element to the start of the list. Returns the added link.
 func (list *List) PushHead(value interface{}) *Link {
 	new_elem := Link{list: list, prev: nil, next: list.head, value: value}
-	list.head = &new_elem
+	if list == nil {
+		list.head = &new_elem
+		list.tail = &new_elem
+	} else {
+		list.head.prev = &new_elem
+		new_elem.next = list.head
+		list.head = &new_elem
+	}
 	return &new_elem
 	// panic("function not yet implemented");
 }
@@ -46,6 +53,13 @@ func (list *List) PushHead(value interface{}) *Link {
 // Add an element to the end of the list. Returns the added link.
 func (list *List) PushTail(value interface{}) *Link {
 	new_elem := Link{list: list, prev: list.tail, next: nil, value: value}
+	if list == nil {
+		list.head = &new_elem
+		list.tail = &new_elem
+	}
+	list.tail.next = &new_elem	
+	new_elem.prev = list.tail
+	new_elem.next = nil
 	list.tail = &new_elem
 	return &new_elem
 	// panic("function not yet implemented");
@@ -125,7 +139,7 @@ func (list *List) PrintList(string, repl.REPLConfig) {
 func (link *Link) PopSelf() {
 	var cur_elem *Link = link.list.head
 	for cur_elem != nil {
-		if *cur_elem == *link {
+		if cur_elem == link {
 			var temp *Link = cur_elem.prev
 			cur_elem.prev.next = cur_elem.next
 			cur_elem.next.prev = temp
