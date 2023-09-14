@@ -119,7 +119,7 @@ func (r *REPL) Run(c net.Conn, clientId uuid.UUID, prompt string) {
 		f, exists := r.commands[trigger]
 		if exists {
 			result := f(prompt, replConfig)
-			io.WriteString(writer, result)
+			io.WriteString(writer, result.Error())
 		} else if trigger == ".help" {
 			for key, _ := range r.commands {
 				fmt.Println(key)

@@ -6,6 +6,8 @@ import (
 	// "io"
 	// "strings"
 
+	"fmt"
+
 	repl "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/repl"
 )
 
@@ -111,7 +113,7 @@ func (link *Link) GetNext() *Link {
 }
 
 // Print the value of every node in the list
-func (list *List) PrintList() {
+func (list *List) PrintList(string, repl.REPLConfig) {
 	var cur_elem *Link = list.head
 	for cur_elem != nil {
 		fmt.Println(cur_elem.value)
@@ -136,27 +138,25 @@ func (link *Link) PopSelf() {
 }
 
 func (link *Link) Remove() {
-	if list.Find(link) == nil {
-		fmt.Println("not found")
-		return
-	} else {
-		var found_link *Link = list.Find(link)
-		found_link.PopSelf()
-	}
+	// if Find(link) == nil {
+	// 	fmt.Println("not found")
+	// 	return
+	// } else {
+	// 	var found_link *Link = list.Find(link)
+	// 	found_link.PopSelf()
+	// }
 }
 
 // List REPL.
 func ListRepl(list *List) *repl.REPL {
-	function_map := map[string]func(*Link){
-		"list_print" : list.PrintList(),
-		"list_push_head" : list.PushHead(),
-		"list_push_tail" : list.PushTail(),
-		"list_remove" : list.p,
-		"list_contains" : 
-	}
+	// new_repl := repl.NewRepl()
+	// new_writer := io.Writer
+	// new_repl_config := REPLConfig{writer: new_writer, clientId: uuid.New()}
+	// new_repl.AddCommand("list_print", list.PrintList(string, ), "help")
+
 	
-	REPL{commands: make(map[string]func(string, *REPLConfig) error), help: make(map[string]string)}
+	// REPL{commands: make(map[string]func(string, *REPLConfig) error), help: make(map[string]string)}
 
 
-	// panic("function not yet implemented");
+	panic("function not yet implemented");
 }
