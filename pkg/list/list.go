@@ -127,5 +127,5 @@ func (link *Link) PopSelf() {
 
 // List REPL.
 func ListRepl(list *List) *repl.REPL {
-	// panic("function not yet implemented");
+	panic("function not yet implemented");
 }

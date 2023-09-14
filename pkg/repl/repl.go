@@ -36,12 +36,30 @@ func (replConfig *REPLConfig) GetAddr() uuid.UUID {
 
 // Construct an empty REPL.
 func NewRepl() *REPL {
-	panic("function not yet implemented");
+	return &REPL{commands: make(map[string]func(string, *REPLConfig) error), help: make(map[string]string)}
 }
 
 // Combines a slice of REPLs.
 func CombineRepls(repls []*REPL) (*REPL, error) {
-	panic("function not yet implemented");
+	var frequency_map = make(map[string]int)
+	var union_map = make(map[string]func(string, *REPLConfig) error)
+	var help_map = make(map[string]string)
+	if len(repls) == 0 {
+		return NewRepl(), errors.New("No REPL found")
+	} else {
+		for i := 0; i < len(repls); i++ {
+				for key := range repls[i].commands {
+					_, exists := frequency_map[key]
+					if exists {
+						return nil, errors.New("Found overlapping triggers")
+					} else {
+						union_map[key] = repls[i].commands[key]
+						help_map[key] = repls[i].help[key]
+				}
+			}
+		}
+	}
+	return &REPL{commands: union_map, help: help_map}, nil
 }
 
 // Get commands.
@@ -56,7 +74,8 @@ func (r *REPL) GetHelp() map[string]string {
 
 // Add a command, along with its help string, to the set of commands.
 func (r *REPL) AddCommand(trigger string, action func(string, *REPLConfig) error, help string) {
-	panic("function not yet implemented");
+	r.commands[trigger] = action
+	r.help[trigger] = help
 }
 
 // Return all REPL usage information as a string.
@@ -80,10 +99,32 @@ func (r *REPL) Run(c net.Conn, clientId uuid.UUID, prompt string) {
 		reader = c
 		writer = c
 	}
-	// scanner := bufio.NewScanner((reader))
-	// replConfig := &REPLConfig{writer: writer, clientId: clientId}
+	scanner := bufio.NewScanner((reader))
+	replConfig := &REPLConfig{writer: writer, clientId: clientId}
 	// Begin the repl loop!
-	panic("function not yet implemented");
+	for {
+		// Prompt string
+		fmt.Println("Enter a command to the terminal: ")
+		scanner.Scan()
+		prompt = scanner.Text()
+		fmt.Println(prompt)
+		prompt = cleanInput(prompt)
+		if prompt == "EOF" {
+			fmt.Println("Exiting REPL...")
+			break
+		}
+		// Tokenize user inputted prompt to find trigger
+		split_input := strings.Split(prompt, " ")
+		trigger := split_input[0]
+		f, exists := r.commands[trigger]
+		if exists {
+			f(prompt, replConfig)
+		} else if trigger == ".help" {
+			for key, _ := range r.commands {
+				fmt.Println(key)
+			}
+		}
+	}
 }
 
 // Run the REPL.
