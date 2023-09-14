@@ -118,7 +118,8 @@ func (r *REPL) Run(c net.Conn, clientId uuid.UUID, prompt string) {
 		trigger := split_input[0]
 		f, exists := r.commands[trigger]
 		if exists {
-			f(prompt, replConfig)
+			result := f(prompt, replConfig)
+			io.WriteString(writer, result)
 		} else if trigger == ".help" {
 			for key, _ := range r.commands {
 				fmt.Println(key)

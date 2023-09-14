@@ -67,8 +67,8 @@ func (list *List) Map(f func(*Link)) {
 	var cur_elem *Link = list.head
 	for cur_elem != nil {
 		f(cur_elem)
+		cur_elem = cur_elem.next
 	}
-	cur_elem = cur_elem.next
 	// panic("function not yet implemented");
 }
 
@@ -110,6 +110,15 @@ func (link *Link) GetNext() *Link {
 	// panic("function not yet implemented");
 }
 
+// Print the value of every node in the list
+func (list *List) PrintList() {
+	var cur_elem *Link = list.head
+	for cur_elem != nil {
+		fmt.Println(cur_elem.value)
+		cur_elem = cur_elem.next
+	}
+}
+
 // Remove this link from its list.
 func (link *Link) PopSelf() {
 	var cur_elem *Link = link.list.head
@@ -121,11 +130,33 @@ func (link *Link) PopSelf() {
 			cur_elem.next = nil
 			cur_elem.prev = nil
 		}
+		cur_elem = cur_elem.next
 	}
 	// panic("function not yet implemented");
 }
 
+func (link *Link) Remove() {
+	if list.Find(link) == nil {
+		fmt.Println("not found")
+		return
+	} else {
+		var found_link *Link = list.Find(link)
+		found_link.PopSelf()
+	}
+}
+
 // List REPL.
 func ListRepl(list *List) *repl.REPL {
-	panic("function not yet implemented");
+	function_map := map[string]func(*Link){
+		"list_print" : list.PrintList(),
+		"list_push_head" : list.PushHead(),
+		"list_push_tail" : list.PushTail(),
+		"list_remove" : list.p,
+		"list_contains" : 
+	}
+	
+	REPL{commands: make(map[string]func(string, *REPLConfig) error), help: make(map[string]string)}
+
+
+	// panic("function not yet implemented");
 }
