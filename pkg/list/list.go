@@ -134,8 +134,9 @@ func (list *List) PrintList(string, repl.REPLConfig) {
 
 // Remove this link from its list.
 func (link *Link) PopSelf() {
-	if link == nil {
+	if link == nil || link.list == nil {
 		link.list.head = nil
+		link.list.tail = nil
 		return
 		// If list contains only 1 node
 	} else if link.prev == nil && link.next == nil {
