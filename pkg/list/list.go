@@ -137,17 +137,23 @@ func (list *List) PrintList(string, repl.REPLConfig) {
 
 // Remove this link from its list.
 func (link *Link) PopSelf() {
-	var cur_elem *Link = link.list.head
-	for cur_elem != nil {
-		if cur_elem == link {
-			var temp *Link = cur_elem.prev
-			cur_elem.prev.next = cur_elem.next
-			cur_elem.next.prev = temp
-			cur_elem.next = nil
-			cur_elem.prev = nil
-		}
-		cur_elem = cur_elem.next
-	}
+	var temp *Link = link.prev
+	link.prev.next = link.next
+	link.next.prev = temp
+	link.next = nil
+	link.prev = nil
+	
+	// var cur_elem *Link = link.list.head
+	// for cur_elem != nil {
+	// 	if cur_elem == link {
+	// 		var temp *Link = cur_elem.prev
+	// 		cur_elem.prev.next = cur_elem.next
+	// 		cur_elem.next.prev = temp
+	// 		cur_elem.next = nil
+	// 		cur_elem.prev = nil
+	// 	}
+	// 	cur_elem = cur_elem.next
+	// }
 	// panic("function not yet implemented");
 }
 
