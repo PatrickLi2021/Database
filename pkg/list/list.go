@@ -138,8 +138,8 @@ func (link *Link) PopSelf() {
 		return
 		// If list contains only 1 node
 	} else if link.prev == nil && link.next == nil {
-		link.list.head = link
-		link.list.tail = link
+		link.list.head = nil
+		link.list.tail = nil
 		return
 	} else if link.prev == nil {
 		link.next.prev = nil
