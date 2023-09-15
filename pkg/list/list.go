@@ -134,11 +134,19 @@ func (list *List) PrintList(string, repl.REPLConfig) {
 
 // Remove this link from its list.
 func (link *Link) PopSelf() {
-	var temp *Link = link.prev
-	link.prev.next = link.next
-	link.next.prev = temp
-	link.next = nil
-	link.prev = nil
+	if link == nil {
+		return
+	} else if link.prev == nil && link.next == nil {
+		return
+	} else {
+		var temp *Link = link.prev
+		link.prev.next = link.next
+		link.next.prev = temp
+		link.next = nil
+		link.prev = nil
+		return
+	}
+
 	
 	// var cur_elem *Link = link.list.head
 	// for cur_elem != nil {
