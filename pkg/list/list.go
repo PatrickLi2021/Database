@@ -38,12 +38,11 @@ func (list *List) PeekTail() *Link {
 // Add an element to the start of the list. Returns the added link.
 func (list *List) PushHead(value interface{}) *Link {
 	new_elem := Link{list: list, prev: nil, next: list.head, value: value}
-	if list == nil {
+	if list.head == nil || list.tail == nil {
 		list.head = &new_elem
 		list.tail = &new_elem
 	} else {
 		list.head.prev = &new_elem
-		new_elem.next = list.head
 		list.head = &new_elem
 	}
 	return &new_elem
@@ -53,13 +52,11 @@ func (list *List) PushHead(value interface{}) *Link {
 // Add an element to the end of the list. Returns the added link.
 func (list *List) PushTail(value interface{}) *Link {
 	new_elem := Link{list: list, prev: list.tail, next: nil, value: value}
-	if list == nil {
+	if list.head == nil || list.tail == nil {
 		list.head = &new_elem
 		list.tail = &new_elem
 	}
 	list.tail.next = &new_elem	
-	new_elem.prev = list.tail
-	new_elem.next = nil
 	list.tail = &new_elem
 	return &new_elem
 	// panic("function not yet implemented");
