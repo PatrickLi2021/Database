@@ -136,8 +136,14 @@ func (list *List) PrintList(string, repl.REPLConfig) {
 func (link *Link) PopSelf() {
 	if link == nil {
 		return
+		// If list contains only 1 node
 	} else if link.prev == nil && link.next == nil {
 		return
+	} else if link.prev == nil {
+		link.next.prev = nil
+		return
+	} else if link.next == nil {
+		link.prev.next = nil
 	} else {
 		var temp *Link = link.prev
 		link.prev.next = link.next
