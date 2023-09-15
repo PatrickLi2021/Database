@@ -45,7 +45,7 @@ func CombineRepls(repls []*REPL) (*REPL, error) {
 	var union_map = make(map[string]func(string, *REPLConfig) error)
 	var help_map = make(map[string]string)
 	if len(repls) == 0 {
-		return NewRepl(), errors.New("No REPL found")
+		return NewRepl(), nil
 	} else {
 		for i := 0; i < len(repls); i++ {
 				for key := range repls[i].commands {
@@ -55,6 +55,7 @@ func CombineRepls(repls []*REPL) (*REPL, error) {
 					} else {
 						union_map[key] = repls[i].commands[key]
 						help_map[key] = repls[i].help[key]
+						frequency_map[key] = 1
 				}
 			}
 		}
