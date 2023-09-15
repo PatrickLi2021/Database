@@ -135,15 +135,21 @@ func (list *List) PrintList(string, repl.REPLConfig) {
 // Remove this link from its list.
 func (link *Link) PopSelf() {
 	if link == nil {
+		link.list.head = nil
+		link.list.tail = nil
 		return
 		// If list contains only 1 node
 	} else if link.prev == nil && link.next == nil {
+		link.list.head = link
+		link.list.tail = link
 		return
 	} else if link.prev == nil {
 		link.next.prev = nil
+		link.list.head = link.next
 		return
 	} else if link.next == nil {
 		link.prev.next = nil
+		link.list.tail = link.prev
 	} else {
 		var temp *Link = link.prev
 		link.prev.next = link.next
