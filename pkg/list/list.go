@@ -7,7 +7,7 @@ import (
 	// "strings"
 
 	"errors"
-	"fmt"	
+	"fmt"
 
 	repl "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/repl"
 )

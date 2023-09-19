@@ -105,26 +105,23 @@ func (r *REPL) Run(c net.Conn, clientId uuid.UUID, prompt string) {
 	// Begin the repl loop!
 	for {
 		// Prompt string
+		io.WriteString(writer, prompt)
 		fmt.Println("Enter a command to the terminal: ")
 		scanner.Scan()
-		prompt = scanner.Text()
-		fmt.Println(prompt)
-		prompt = cleanInput(prompt)
+		user_input := cleanInput(scanner.Text())
 		if prompt == "EOF" {
-			fmt.Println("Exiting REPL...")
+			io.WriteString(writer, "Exiting REPL...")
 			break
 		}
 		// Tokenize user inputted prompt to find trigger
-		split_input := strings.Split(prompt, " ")
+		split_input := strings.Split(user_input, " ")
 		trigger := split_input[0]
 		f, exists := r.commands[trigger]
 		if exists {
 			result := f(prompt, replConfig)
 			io.WriteString(writer, result.Error())
 		} else if trigger == ".help" {
-			for key, _ := range r.commands {
-				fmt.Println(key)
-			}
+			r.HelpString()
 		}
 	}
 }
