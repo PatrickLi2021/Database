@@ -10,13 +10,14 @@ import (
 	// "syscall"
 
 	config "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/config"
-	repl "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/repl"
 	list "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/list"
-	// pager "github.com/csci1270-fall-2023/db/pkg/pager"
-	// db "github.com/csci1270-fall-2023/db/pkg/db"
-	// query "github.com/csci1270-fall-2023/db/pkg/query"
-	// concurrency "github.com/csci1270-fall-2023/db/pkg/concurrency"
-	// recovery "github.com/csci1270-fall-2023/db/pkg/recovery"
+	pager "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/pager"
+	repl "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/repl"
+
+	// db "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/db"
+	// query "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/query"
+	// concurrency "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/concurrency"
+	// recovery "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/recovery"
 
 	uuid "github.com/google/uuid"
 )
@@ -79,7 +80,6 @@ func main() {
 
 	// [CONCURRENCY]
 	// var portFlag = flag.Int("p", DEFAULT_PORT, "port number")
-	
 	flag.Parse()
 
 	// [BTREE]
@@ -119,13 +119,13 @@ func main() {
 		repls = append(repls, list.ListRepl(l))
 
 	// [PAGER]
-	// case "pager":
-	// 	pRepl, err := pager.PagerRepl()
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 		return
-	// 	}
-	// 	repls = append(repls, pRepl)
+	case "pager":
+		pRepl, err := pager.PagerRepl()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		repls = append(repls, pRepl)
 
 	// [BTREE]
 	// case "db":
@@ -173,8 +173,8 @@ func main() {
 
 	// Start server if server (concurrency or recovery), else run REPL here.
 	if server {
-	// 	[CONCURRENCY]
-	// 	startServer(r, tm, prompt, *portFlag)
+		// 	[CONCURRENCY]
+		// 	startServer(r, tm, prompt, *portFlag)
 	} else {
 		r.Run(nil, uuid.New(), prompt)
 	}
