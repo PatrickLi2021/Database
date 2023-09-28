@@ -23,8 +23,8 @@ const NUMPAGES = config.NumPages
 // Pagers manage pages of data read from a file.
 type Pager struct {
 	file         *os.File             // File descriptor.
-	maxPageNum   int64                // The number of pages used by this database.
-	ptMtx        sync.Mutex           // Page table mutex.
+	maxPageNum   int64                // The number of pages used by this database (number of pages in the current pager)
+	ptMtx        sync.Mutex           // Page table mutex (this is a lock for the entire pager struct)
 	freeList     *list.List           // Free page list.
 	unpinnedList *list.List           // Unpinned page list.
 	pinnedList   *list.List           // Pinned page list.
@@ -134,20 +134,86 @@ func (pager *Pager) ReadPageFromDisk(page *Page, pagenum int64) error {
 // NewPage returns an unused buffer from the free or unpinned list
 // the ptMtx should be locked on entry
 func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
-	panic("function not yet implemented")
+	// Synchronize function
+	pager.ptMtx.Lock()
+	defer pager.ptMtx.Unlock()
+	// Evict page from free list
+	if (pager.freeList != nil || pager.freeList.PeekHead() != nil) {
+		free_page := pager.freeList.PeekHead().GetKey().(*Page)
+		free_page.pagenum = pagenum
+		free_page.pager = pager
+		*(free_page.data) = []byte{}
+		return free_page, nil
+	} else if (pager.unpinnedList.PeekHead() != nil && pager.HasFile()) {
+		// Evict page from unpinned list
+		evicted_page := pager.unpinnedList.PeekHead().GetKey().(*Page)
+		pager.FlushPage(evicted_page)
+		evicted_page.pagenum = pagenum
+		evicted_page.pager = pager
+		*(evicted_page.data) = []byte{}
+		return evicted_page, nil
+	} else {
+		return nil, errors.New("Could not create new page")
+	}
+	// Input pagenum is the new pagenum for this new page, key is page number?
+	// Check to see if there are still pages in FreeList. If there are, then return the page you found in FreeList and 
+	// evict it from FreeList since it is no longer free. If there are no more pages in FreeList, then you want to evict
+	// a page from unpinned list
 }
+
+// Whenever you want to get a new memory address to be mapped to a new logical page. Then if the pager is backed by disk, we check the unpinned list. You could use that memory to load the contents from another logical page. If you are backed by disk, you can flush the contents of the unpinned page to disk. If you're not backed by disk, you no longer have the option to move the data somewhere else, so you have to just leave it in the unpinned list.
+
+// All pages in unpinned list have a pin count of 0
 
 // getPage returns the page corresponding to the given pagenum.
 func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
-	panic("function not yet implemented")
+	if (pagenum < 0) {
+		return nil, errors.New("Invalid page")
+	} else if (pagenum >= 0 && pagenum <= pager.maxPageNum) {
+		list_containing_page := page.pager.pageTable[pagenum].GetList()
+		// If page is in unpinned list
+		if (list_containing_page == page.pager.unpinnedList) {
+		  page.Get()
+			page.pager.pinnedList.PushTail(page)
+		} else if (list_containing_page == page.pager.pinnedList) {
+			page.Get()	
+			return page, nil
+		} else {
+			return nil, errors.New("Page number is valid, but could not locate page in pager                 ")
+		}
+	} else if (pagenum > page.pager.maxPageNum) {
+		page.pager.maxPageNum++
+		new_page, _ := pager.NewPage(pagenum)
+		new_page.Get()
+		new_page.pager.pinnedList.PushTail(new_page)
+		return new_page, nil
+	} else {
+		return nil, errors.New("Couldn't retrieve page")
+	}
+
+	// move page into pinned list
+	// We check if a page is invalid if pagenum is <= 0 or pagenum is not in the page table
+	// If the page is not in the page table at first, but it is a legal page number, we want to call newpage and increment maxpagenum
+	// If logical page (AKA pagenum) is less than maxpage, then we want to get it from file
 }
 
 // Flush a particular page to disk.
 func (pager *Pager) FlushPage(page *Page) {
-	panic("function not yet implemented")
+	if (page.dirty && page.pager.HasFile()) {
+		page.pager.file.WriteAt(*page.data, page.pagenum * 4096)
+		page.Put()
+		page.dirty = false
+	}
+	// To unpin pages, use the Put() function in page.go
 }
 
 // Flushes all dirty pages.
 func (pager *Pager) FlushAllPages() {
-	panic("function not yet implemented")
+	while (pager.unpinnedList.PeekHead() != nil) {
+		current_head := pager.unpinnedList.PeekHead()..GetKey().(*Page)
+		current_head
+	}
+	// Flush from both unpinned list and pinned list
 }
+
+// We should not be closing a pager that still has pinned pages
