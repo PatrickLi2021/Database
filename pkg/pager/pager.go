@@ -173,19 +173,20 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 		return nil, errors.New("Invalid page")
 	} else if (pagenum >= 0) {
 		// If pagenum is in memory and within the used range
-		list_containing_page := page.pager.pageTable[pagenum].GetList()
+		list_containing_page := pager.pageTable[pagenum].GetList()
+		page_to_get := pager.pageTable[pagenum].GetKey().(*Page)
 		// Page is in unpinned list
-		if (list_containing_page == page.pager.unpinnedList) {
-		  page.Get()
-			page.pager.pinnedList.PushTail(page)
-			return page, nil
-		} else if (list_containing_page == page.pager.pinnedList) {
+		if (list_containing_page == pager.unpinnedList) {
+		  page_to_get.Get()
+			pager.pinnedList.PushTail(page)
+			return page_to_get, nil
+		} else if (list_containing_page == pager.pinnedList) {
 			// Page is in pinned list
-			page.Get()	
-			return page, nil
+			page_to_get.Get()	
+			return page_to_get, nil
 		} else {
 			// Page is greater than maxPageNum
-			page.pager.maxPageNum++
+			pager.maxPageNum++
 			new_page, _ := pager.NewPage(pagenum)
 			new_page.Get()
 			new_page.pager.pinnedList.PushTail(new_page)
@@ -207,10 +208,8 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 func (pager *Pager) FlushPage(page *Page) {
 	if (page.dirty && page.pager.HasFile()) {
 		page.pager.file.WriteAt(*page.data, page.pagenum * 4096)
-		page.Put()
 		page.dirty = false
 	}
-	// To unpin pages, use the Put() function in page.go
 }
 
 // Flushes all dirty pages.
