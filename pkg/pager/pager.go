@@ -142,19 +142,18 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 		*(free_page.data) = []byte{}
 		free_page.pager.pageTable[pagenum] = pager.freeList.PeekHead()
 		// Remove this link from freeList
-		free_page.pager.freeList.Remove(free_page)
+		free_page.pager.freeList.PeekHead().PopSelf()
 		return free_page, nil
 	} else if (pager.unpinnedList.PeekHead() != nil && pager.HasFile()) {
 		// Evict page from unpinned list
 		evicted_page := pager.unpinnedList.PeekHead().GetKey().(*Page)
+		pager.FlushPage(evicted_page)
+		delete(pager.pageTable, evicted_page.pagenum)
 		evicted_page.pagenum = pagenum
 		evicted_page.pager = pager
 		evicted_page.pager.pageTable[pagenum] = pager.unpinnedList.PeekHead()
 		*(evicted_page.data) = []byte{}
-		if (evicted_page.dirty) {
-			pager.FlushPage(evicted_page)
-		}
-		evicted_page.pager.freeList.Remove(evicted_page)
+		// evicted_page.pager.freeList.Remove(evicted_page)
 		return evicted_page, nil
 	} else {
 		return nil, errors.New("Could not create new page")
@@ -185,15 +184,17 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 			page_to_get.Get()	
 			return page_to_get, nil
 		} else {
-			// Page is greater than maxPageNum
+			// Page is not in page table, so we have to load from disk
 			pager.maxPageNum++
 			new_page, _ := pager.NewPage(pagenum)
+			pager.ReadPageFromDisk(new_page, pagenum)
 			new_page.Get()
 			new_page.pager.pinnedList.PushTail(new_page)
+			new_page.pager.pageTable[pagenum] = new_page.pager.pinnedList.PeekHead()
 			return new_page, nil             
 		}
 	} else {
-		return nil, errors.New("Couldn't retrieve page")
+		return nil, errors.New("Could not retrieve page")
 	}
 
 	// move page into pinned list
