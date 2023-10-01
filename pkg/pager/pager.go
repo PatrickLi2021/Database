@@ -159,6 +159,7 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 
 // getPage returns the page corresponding to the given pagenum.
 func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
+	fmt.Print("hello")
 	if (pagenum < 0) {
 		return nil, errors.New("Invalid page")
 	} else if (pagenum >= 0) {
@@ -186,6 +187,7 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 			new_page, err := pager.NewPage(pagenum)
 			if (err == nil) { 
 				// pager.ptMtx.Unlock()
+				fmt.Print("in err nil")
 				return nil, errors.New("NewPage() failed")
 			} else {
 				fmt.Print("a")
