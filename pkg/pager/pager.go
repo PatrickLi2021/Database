@@ -139,7 +139,6 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 		free_page := pager.freeList.PeekHead().GetKey().(*Page)
 		free_page.pagenum = pagenum
 		free_page.pager = pager
-		*(free_page.data) = []byte{}
 		free_page.pager.pageTable[pagenum] = pager.freeList.PeekHead()
 		// Remove this link from freeList
 		free_page.pager.freeList.PeekHead().PopSelf()
