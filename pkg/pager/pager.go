@@ -135,7 +135,7 @@ func (pager *Pager) ReadPageFromDisk(page *Page, pagenum int64) error {
 // the ptMtx should be locked on entry
 func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 	// Evict page from free list
-	if (pager.freeList != nil) {
+	if (pager.freeList != nil && pager.freeList.PeekHead() != nil) {
 		free_page := pager.freeList.PeekHead().GetKey().(*Page)
 		free_page.pagenum = pagenum
 		free_page.pager = pager
