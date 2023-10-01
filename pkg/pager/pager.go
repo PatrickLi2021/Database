@@ -197,7 +197,6 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 			}          
 		}
 	} else {
-		pager.ptMtx.Unlock()
 		return nil, errors.New("Could not retrieve page")
 	}
 }
