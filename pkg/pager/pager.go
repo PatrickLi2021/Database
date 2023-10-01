@@ -163,7 +163,7 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 	// defer pager.ptMtx.Unlock()
 	if (pagenum < 0) {
 		return nil, errors.New("Invalid page")
-	} else if (pagenum >= 0) {
+	} else {
 		pager.ptMtx.Lock()
 		// If pagenum is in memory and within the used range
 		_, in_table := pager.pageTable[pagenum]
@@ -195,13 +195,10 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 				new_page.Get()
 				pager.maxPageNum = pager.GetNumPages() + 1
 				pager.ptMtx.Unlock()
-				return new_page, nil   
-			}          
+				return new_page, nil  
+				} 
+			}           
 		}
-	} else {
-		pager.ptMtx.Unlock()
-		return nil, errors.New("Could not retrieve page")
-	}
 }
 
 // Flush a particular page to disk.
