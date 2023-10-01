@@ -163,8 +163,6 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 	}
 }
 
-
-
 // getPage returns the page corresponding to the given pagenum.
 func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 	if pagenum < 0 {
@@ -193,7 +191,7 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 				pager.ReadPageFromDisk(new_page, pagenum)
 				pager.pinnedList.PushTail(new_page)
 				new_page.Get()
-				pager.maxPageNum = pager.maxPageNum + 1
+				pager.maxPageNum = pager.GetNumPages() + 1
 				pager.ptMtx.Unlock()
 				return new_page, nil
 			} else {

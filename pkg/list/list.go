@@ -52,16 +52,15 @@ func (list *List) PushHead(value interface{}) *Link {
 	return nil
 }
 
-// Add an element to the end of the list. Returns the added link.
 func (list *List) PushTail(value interface{}) *Link {
-	new_elem := Link{list: list, prev: list.tail, next: nil, value: value}
-	if list.head == nil || list.tail == nil {
-		list.head = &new_elem
-		list.tail = &new_elem
+	new_link := Link{list: list, prev: list.PeekTail(), next: nil, value: value}
+	if list.PeekTail() != nil {
+		list.PeekTail().next = &new_link
+	} else {
+		list.head = &new_link
 	}
-	list.tail.next = &new_elem
-	list.tail = &new_elem
-	return &new_elem
+	list.tail = &new_link
+	return &new_link
 }
 
 // Find an element in a list given a boolean function, f, that evaluates to true on the desired element.
@@ -133,29 +132,31 @@ func (list *List) PrintList() *List {
 	return nil
 }
 
-// Remove this link from its list.
 func (link *Link) PopSelf() {
 	if link == nil {
 		return
-		// If list contains only 1 node
-	} else if link.prev == nil && link.next == nil {
-		link.list.head = nil
-		link.list.tail = nil
-		return
-	} else if link.prev == nil {
-		link.next.prev = nil
-		link.list.head = link.next
-		return
-	} else if link.next == nil {
-		link.prev.next = nil
-		link.list.tail = link.prev
-	} else {
-		var temp *Link = link.prev
-		link.prev.next = link.next
-		link.next.prev = temp
-		link.next = nil
-		link.prev = nil
-		return
+	}
+	if link.GetPrev() == nil && link.GetNext() == nil {
+		// only link in list
+		link.GetList().head = nil
+		link.GetList().tail = nil
+	}	
+	if link.GetPrev() == nil && link.GetNext() != nil {
+		// if link is at head of list
+		link.GetNext().prev = link.GetPrev()
+		link.GetList().head = link.GetNext()
+	}
+
+	// if link is at end of list
+	if link.GetNext() == nil && link.GetPrev() != nil {
+		link.GetPrev().next = link.GetNext()
+		link.GetList().tail = link.GetPrev()
+	}
+
+	// if link is in middle of list
+	if link.GetPrev() != nil && link.GetNext() != nil {
+		link.GetPrev().next = link.GetNext()
+		link.GetNext().prev = link.GetPrev()
 	}
 }
 
