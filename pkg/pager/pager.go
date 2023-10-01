@@ -135,7 +135,7 @@ func (pager *Pager) ReadPageFromDisk(page *Page, pagenum int64) error {
 // the ptMtx should be locked on entry
 func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 	// Evict page from free list
-	if (pager.freeList != nil || pager.freeList.PeekHead() != nil) {
+	if (pager.freeList != nil) {
 		free_page := pager.freeList.PeekHead().GetKey().(*Page)
 		free_page.pagenum = pagenum
 		free_page.pager = pager
@@ -238,5 +238,3 @@ func (pager *Pager) FlushAllPages() {
 	}
 	// Flush from both unpinned list and pinned list
 }
-
-// We should not be closing a pager that still has pinned pages
