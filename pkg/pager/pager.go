@@ -175,7 +175,7 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 				page_to_get.Get()	
 				pager.ptMtx.Unlock()
 				return page_to_get, nil
-			} else if (list_containing_page == pager.pinnedList) {
+			} else {
 				// Page is in pinned list
 				page_to_get.Get()	
 				pager.ptMtx.Unlock()
