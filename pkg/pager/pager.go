@@ -151,7 +151,6 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 		evicted_page.pagenum = pagenum
 		evicted_page.pager = pager
 		evicted_page.pager.pageTable[pagenum] = pager.unpinnedList.PeekHead()
-		*(evicted_page.data) = []byte{}
 		// evicted_page.pager.freeList.Remove(evicted_page)
 		return evicted_page, nil
 	} else {
