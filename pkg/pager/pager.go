@@ -151,6 +151,7 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 		evicted_page.pagenum = pagenum
 		evicted_page.pager = pager
 		evicted_page.pager.pageTable[pagenum] = pager.unpinnedList.PeekHead()
+		pager.freeList.PeekHead().PopSelf()
 		return evicted_page, nil
 	} else {
 		return nil, errors.New("Could not create new page")
@@ -189,18 +190,12 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 			new_page, err := pager.NewPage(pagenum)
 			if (err != nil) { 
 				pager.ptMtx.Unlock()
-				fmt.Print("in err nil")
 				return nil, errors.New("NewPage() failed")
 			} else {
-				fmt.Print("a")
 				pager.maxPageNum = pager.maxPageNum + 1
-				fmt.Print("b")
 				pager.ReadPageFromDisk(new_page, pagenum)
-				fmt.Print("c")
 				new_page.Get()
-				fmt.Print("d")
 				new_page.pager.pinnedList.PushTail(new_page)
-				fmt.Print("e")
 				pager.ptMtx.Unlock()
 				return new_page, nil   
 			}          
