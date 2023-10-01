@@ -206,9 +206,9 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 
 // Flush a particular page to disk.
 func (pager *Pager) FlushPage(page *Page) {
-	if (page.dirty && page.pager.HasFile()) {
-		page.pager.file.WriteAt(*page.data, page.pagenum * 4096)
-		page.dirty = false
+	if page.IsDirty() {
+		page.GetPager().file.WriteAt(*page.GetData(), page.GetPageNum()*4096)
+		page.SetDirty(false)
 	}
 }
 
