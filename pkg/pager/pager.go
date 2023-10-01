@@ -136,14 +136,16 @@ func (pager *Pager) ReadPageFromDisk(page *Page, pagenum int64) error {
 
 // NewPage returns an unused buffer from the free or unpinned list
 // the ptMtx should be locked on entry
+// NewPage returns an unused buffer from the free or unpinned list
+// the ptMtx should be locked on entry
 func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 	if pager.freeList.PeekHead() != nil {
-		new_pg := (pager.freeList.PeekHead().GetKey()).(*Page)
-		new_pg.pager = pager
-		new_pg.pagenum = pagenum
+		new_page := (pager.freeList.PeekHead().GetKey()).(*Page)
+		new_page.pager = pager
+		new_page.pagenum = pagenum
 		pager.pageTable[pagenum] = pager.freeList.PeekHead()
 		pager.freeList.PeekHead().PopSelf()
-		return new_pg, nil
+		return new_page, nil
 	} else if pager.unpinnedList.PeekHead() != nil {
 		if !pager.HasFile() {
 			return nil, errors.New("not backed by disk")
@@ -157,9 +159,11 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 			return new_page, nil
 		}
 	} else {
-		return nil, errors.New("no space")
+		return nil, errors.New("no lists had space")
 	}
 }
+
+
 
 // getPage returns the page corresponding to the given pagenum.
 func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
@@ -168,21 +172,20 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 	}	else {
 		pager.ptMtx.Lock()
 		new_pg, status := pager.pageTable[pagenum]
-
 		if status { 
-			lst_page := new_pg.GetList()
-			if (lst_page == pager.pinnedList) {
+			possible_lst := new_pg.GetList()
+			if possible_lst == pager.pinnedList {
 				pg_pin := (new_pg.GetKey()).(*Page)
 				pg_pin.Get()
 				pager.ptMtx.Unlock()
 				return pg_pin, nil
 			} else {
-				page_unpinned_list := (new_pg.GetKey()).(*Page)
-				page_unpinned_list.Get()
+				pg_unpin := (new_pg.GetKey()).(*Page)
+				pg_unpin.Get()
 				new_pg.PopSelf()
-				pager.pinnedList.PushTail(page_unpinned_list)
+				pager.pinnedList.PushTail(pg_unpin)
 				pager.ptMtx.Unlock()
-				return page_unpinned_list, nil
+				return pg_unpin, nil
 			}
 		} else {
 			new_page, err := pager.NewPage(pagenum)
@@ -195,7 +198,7 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 				return new_page, nil
 			} else {
 				pager.ptMtx.Unlock()
-				return nil, errors.New("Could not get new page")
+				return nil, errors.New("Retrieval failed")
 			}
 		}
 	}
@@ -211,10 +214,9 @@ func (pager *Pager) FlushPage(page *Page) {
 
 // Flushes all dirty pages.
 func (pager *Pager) FlushAllPages() {
-	flush_link_func := func (link *list.Link) {
+	flush_func := func (link *list.Link) {
 		pager.FlushPage((link.GetKey()).(*Page))
 	}
-
-	pager.pinnedList.Map(flush_link_func)
-	pager.unpinnedList.Map(flush_link_func)
+	pager.unpinnedList.Map(flush_func)
+	pager.pinnedList.Map(flush_func)
 }
