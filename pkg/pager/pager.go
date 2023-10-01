@@ -151,38 +151,35 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 		evicted_page.pagenum = pagenum
 		evicted_page.pager = pager
 		evicted_page.pager.pageTable[pagenum] = pager.unpinnedList.PeekHead()
-		// evicted_page.pager.freeList.Remove(evicted_page)
 		return evicted_page, nil
 	} else {
 		return nil, errors.New("Could not create new page")
 	}
 }
 
-// Whenever you want to get a new memory address to be mapped to a new logical page. Then if the pager is backed by disk, we check the unpinned list. You could use that memory to load the contents from another logical page. If you are backed by disk, you can flush the contents of the unpinned page to disk. If you're not backed by disk, you no longer have the option to move the data somewhere else, so you have to just leave it in the unpinned list.
-
-// All pages in unpinned list have a pin count of 0
-
 // getPage returns the page corresponding to the given pagenum.
 func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
-	pager.ptMtx.Lock()
-	defer pager.ptMtx.Unlock()
 	if (pagenum < 0) {
 		return nil, errors.New("Invalid page")
 	} else if (pagenum >= 0) {
+		pager.ptMtx.Lock()
 		// If pagenum is in memory and within the used range
-		list_containing_page := pager.pageTable[pagenum].GetList()
-		page_to_get := pager.pageTable[pagenum].GetKey().(*Page)
-		// Page is in unpinned list
-		if (list_containing_page == pager.unpinnedList) {
-		  pager.pageTable[pagenum].PopSelf()
-			pager.pinnedList.PushTail(page)
-			// pager.ptMtx.Unlock()
-			return page_to_get, nil
-		} else if (list_containing_page == pager.pinnedList) {
-			// Page is in pinned list
-			page_to_get.Get()	
-			// pager.ptMtx.Unlock()
-			return page_to_get, nil
+		page_to_get, in_table := pager.pageTable[pagenum]
+		if (in_table) {
+			list_containing_page := pager.pageTable[pagenum].GetList()
+			page_to_get := pager.pageTable[pagenum].GetKey().(*Page)
+			// Page is in unpinned list
+			if (list_containing_page == pager.unpinnedList) {
+				pager.pageTable[pagenum].PopSelf()
+				pager.pinnedList.PushTail(page)
+				// pager.ptMtx.Unlock()
+				return page_to_get, nil
+			} else if (list_containing_page == pager.pinnedList) {
+				// Page is in pinned list
+				page_to_get.Get()	
+				// pager.ptMtx.Unlock()
+				return page_to_get, nil
+			}
 		} else {
 			// Page is not in page table, so we have to load from disk
 			new_page, err := pager.NewPage(pagenum)
