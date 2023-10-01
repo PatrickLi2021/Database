@@ -214,21 +214,10 @@ func (pager *Pager) FlushPage(page *Page) {
 
 // Flushes all dirty pages.
 func (pager *Pager) FlushAllPages() {
-	// Flush all pages from unpinned list
-	current_head_pinned := pager.unpinnedList.PeekHead()
-	for (current_head_pinned != nil) {
-		if (current_head_pinned.GetKey().(*Page).dirty) {
-			current_head_pinned.GetKey().(*Page).pager.FlushPage(current_head_pinned.GetKey().(*Page))
-		}
-		current_head_pinned = current_head_pinned.GetNext()		
+	flush_link_func := func (link *list.Link) {
+		pager.FlushPage((link.GetKey()).(*Page))
 	}
-	// Flush all pages from pinned list
-	current_head_unpinned := pager.pinnedList.PeekHead()
-	for (current_head_unpinned != nil) {
-		if (current_head_unpinned.GetKey().(*Page).dirty) {
-			current_head_unpinned.GetKey().(*Page).pager.FlushPage(current_head_unpinned.GetKey().(*Page))
-		}
-		current_head_unpinned = current_head_unpinned.GetNext()		
-	}
-	// Flush from both unpinned list and pinned list
+
+	pager.pinnedList.Map(flush_link_func)
+	pager.unpinnedList.Map(flush_link_func)
 }
