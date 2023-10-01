@@ -163,7 +163,7 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 	if (pagenum < 0) {
 		return nil, errors.New("Invalid page")
 	} else if (pagenum >= 0) {
-		// pager.ptMtx.Lock()
+		pager.ptMtx.Lock()
 		// If pagenum is in memory and within the used range
 		_, in_table := pager.pageTable[pagenum]
 		if (in_table) {
@@ -174,19 +174,19 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 				pager.pageTable[pagenum].PopSelf()
 				pager.pinnedList.PushTail(page_to_get)
 				page_to_get.Get()	
-				// pager.ptMtx.Unlock()
+				pager.ptMtx.Unlock()
 				return page_to_get, nil
 			} else {
 				// Page is in pinned list
 				page_to_get.Get()	
-				// pager.ptMtx.Unlock()
+				pager.ptMtx.Unlock()
 				return page_to_get, nil
 			}
 		} else {
 			// Page is not in page table, so we have to load from disk
 			new_page, err := pager.NewPage(pagenum)
 			if (err != nil) { 
-				// pager.ptMtx.Unlock()
+				pager.ptMtx.Unlock()
 				fmt.Print("in err nil")
 				return nil, errors.New("NewPage() failed")
 			} else {
@@ -199,7 +199,7 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 				fmt.Print("d")
 				new_page.pager.pinnedList.PushTail(new_page)
 				fmt.Print("e")
-				// pager.ptMtx.Unlock()
+				pager.ptMtx.Unlock()
 				return new_page, nil   
 			}          
 		}
