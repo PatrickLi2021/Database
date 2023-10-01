@@ -151,7 +151,6 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 		evicted_page.pagenum = pagenum
 		evicted_page.pager = pager
 		evicted_page.pager.pageTable[pagenum] = pager.unpinnedList.PeekHead()
-		pager.freeList.PeekHead().PopSelf()
 		return evicted_page, nil
 	} else {
 		return nil, errors.New("Could not create new page")
@@ -162,7 +161,6 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 	// pager.ptMtx.Lock()
 	// defer pager.ptMtx.Unlock()
-	fmt.Print("hello")
 	if (pagenum < 0) {
 		return nil, errors.New("Invalid page")
 	} else if (pagenum >= 0) {
@@ -174,9 +172,9 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 			page_to_get := pager.pageTable[pagenum].GetKey().(*Page)
 			// Page is in unpinned list
 			if (list_containing_page == pager.unpinnedList) {
+				page_to_get.Get()	
 				pager.pageTable[pagenum].PopSelf()
 				pager.pinnedList.PushTail(page_to_get)
-				page_to_get.Get()	
 				pager.ptMtx.Unlock()
 				return page_to_get, nil
 			} else {
@@ -192,15 +190,16 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 				pager.ptMtx.Unlock()
 				return nil, errors.New("NewPage() failed")
 			} else {
-				pager.maxPageNum = pager.maxPageNum + 1
 				pager.ReadPageFromDisk(new_page, pagenum)
+				pager.pinnedList.PushTail(new_page)
 				new_page.Get()
-				new_page.pager.pinnedList.PushTail(new_page)
+				pager.maxPageNum = pager.GetNumPages() + 1
 				pager.ptMtx.Unlock()
 				return new_page, nil   
 			}          
 		}
 	} else {
+		pager.ptMtx.Unlock()
 		return nil, errors.New("Could not retrieve page")
 	}
 }
