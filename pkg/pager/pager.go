@@ -184,16 +184,16 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 		} else {
 			// Page is not in page table, so we have to load from disk
 			new_page, err := pager.NewPage(pagenum)
-			if (err != nil) { 
-				pager.ptMtx.Unlock()
-				return nil, errors.New("NewPage() failed")
-			} else {
+			if (err == nil) { 
 				pager.maxPageNum = pager.maxPageNum + 1
 				pager.ReadPageFromDisk(new_page, pagenum)
 				new_page.Get()
 				new_page.pager.pinnedList.PushTail(new_page)
 				pager.ptMtx.Unlock()
 				return new_page, nil   
+			} else {
+				pager.ptMtx.Unlock()
+				return nil, errors.New("NewPage() failed")
 			}          
 		}
 	} else {
