@@ -188,10 +188,15 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 				// pager.ptMtx.Unlock()
 				return nil, errors.New("NewPage() failed")
 			} else {
+				fmt.Print("a")
 				pager.maxPageNum = pager.maxPageNum + 1
+				fmt.Print("b")
 				pager.ReadPageFromDisk(new_page, pagenum)
+				fmt.Print("c")
 				new_page.Get()
+				fmt.Print("d")
 				new_page.pager.pinnedList.PushTail(new_page)
+				fmt.Print("e")
 				// pager.ptMtx.Unlock()
 				return new_page, nil   
 			}          
