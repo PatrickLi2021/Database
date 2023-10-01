@@ -164,7 +164,7 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 	} else if (pagenum >= 0) {
 		pager.ptMtx.Lock()
 		// If pagenum is in memory and within the used range
-		page_to_get, in_table := pager.pageTable[pagenum]
+		_, in_table := pager.pageTable[pagenum]
 		if (in_table) {
 			list_containing_page := pager.pageTable[pagenum].GetList()
 			page_to_get := pager.pageTable[pagenum].GetKey().(*Page)
@@ -196,9 +196,8 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 				return new_page, nil   
 			}          
 		}
-	} else {
-		return nil, errors.New("Could not retrieve page")
 	}
+		return nil, errors.New("Could not retrieve page")
 }
 
 // Flush a particular page to disk.
