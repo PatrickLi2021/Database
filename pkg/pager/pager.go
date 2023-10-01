@@ -168,6 +168,7 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 	pager.ptMtx.Lock()
 	if (pagenum < 0) {
+		pager.ptMtx.Lock()
 		return nil, errors.New("Invalid page")
 	} else if (pagenum >= 0) {
 		// If pagenum is in memory and within the used range
@@ -186,8 +187,12 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 			return page_to_get, nil
 		} else {
 			// Page is not in page table, so we have to load from disk
+			new_page, err := pager.NewPage(pagenum)
+			if (err == nil) {
+				pager.ptMtx.Unlock()
+				return nil, errors.New("NewPage() failed")
+			}
 			pager.maxPageNum++
-			new_page, _ := pager.NewPage(pagenum)
 			pager.ReadPageFromDisk(new_page, pagenum)
 			new_page.Get()
 			new_page.pager.pinnedList.PushTail(new_page)
@@ -220,7 +225,7 @@ func (pager *Pager) FlushPage(page *Page) {
 func (pager *Pager) FlushAllPages() {
 	// Flush all pages from unpinned list
 	current_head_pinned := pager.unpinnedList.PeekHead()
-	for (pager.unpinnedList.PeekHead() != nil) {
+	for (current_head_pinned != nil) {
 		if (current_head_pinned.GetKey().(*Page).dirty) {
 			current_head_pinned.GetKey().(*Page).pager.FlushPage(current_head_pinned.GetKey().(*Page))
 		}
@@ -228,7 +233,7 @@ func (pager *Pager) FlushAllPages() {
 	}
 	// Flush all pages from pinned list
 	current_head_unpinned := pager.pinnedList.PeekHead()
-	for (pager.unpinnedList.PeekHead() != nil) {
+	for (current_head_unpinned != nil) {
 		if (current_head_unpinned.GetKey().(*Page).dirty) {
 			current_head_unpinned.GetKey().(*Page).pager.FlushPage(current_head_unpinned.GetKey().(*Page))
 		}
