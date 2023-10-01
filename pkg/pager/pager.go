@@ -184,7 +184,7 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 		} else {
 			// Page is not in page table, so we have to load from disk
 			new_page, err := pager.NewPage(pagenum)
-			if (err == nil) {
+			if (err != nil) { 
 				pager.ptMtx.Unlock()
 				return nil, errors.New("NewPage() failed")
 			} else {
