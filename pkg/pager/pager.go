@@ -168,7 +168,7 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 	pager.ptMtx.Lock()
 	if (pagenum < 0) {
-		pager.ptMtx.Lock()
+		pager.ptMtx.Unlock()
 		return nil, errors.New("Invalid page")
 	} else if (pagenum >= 0) {
 		// If pagenum is in memory and within the used range
