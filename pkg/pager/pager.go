@@ -133,27 +133,31 @@ func (pager *Pager) ReadPageFromDisk(page *Page, pagenum int64) error {
 
 // NewPage returns an unused buffer from the free or unpinned list
 // the ptMtx should be locked on entry
+
+// NewPage returns an unused buffer from the free or unpinned list
+// the ptMtx should be locked on entry
 func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
-	// Evict page from free list
-	if (pager.freeList != nil && pager.freeList.PeekHead() != nil) {
-		free_page := pager.freeList.PeekHead().GetKey().(*Page)
-		free_page.pagenum = pagenum
-		free_page.pager = pager
-		free_page.pager.pageTable[pagenum] = pager.freeList.PeekHead()
-		// Remove this link from freeList
-		free_page.pager.freeList.PeekHead().PopSelf()
-		return free_page, nil
-	} else if (pager.unpinnedList.PeekHead() != nil && pager.HasFile()) {
-		// Evict page from unpinned list
-		evicted_page := pager.unpinnedList.PeekHead().GetKey().(*Page)
-		pager.FlushPage(evicted_page)
-		delete(pager.pageTable, evicted_page.pagenum)
-		evicted_page.pagenum = pagenum
-		evicted_page.pager = pager
-		evicted_page.pager.pageTable[pagenum] = pager.unpinnedList.PeekHead()
-		return evicted_page, nil
+	if pager.freeList.PeekHead() != nil {
+		new_pg := (pager.freeList.PeekHead().GetKey()).(*Page)
+		new_pg.pager = pager
+		new_pg.pagenum = pagenum
+		pager.pageTable[pagenum] = pager.freeList.PeekHead()
+		pager.freeList.PeekHead().PopSelf()
+		return new_pg, nil
+	} else if pager.unpinnedList.PeekHead() != nil {
+		if !pager.HasFile() {
+			return nil, errors.New("not backed by disk")
+		} else {
+			new_page := (pager.unpinnedList.PeekHead().GetKey()).(*Page)
+			pager.FlushPage(new_page)
+			delete(pager.pageTable, new_page.pagenum)
+			pager.pageTable[pagenum] = pager.unpinnedList.PeekHead()
+			new_page.pager = pager
+			new_page.pagenum = pagenum
+			return new_page, nil
+		}
 	} else {
-		return nil, errors.New("Could not create new page")
+		return nil, errors.New("no space")
 	}
 }
 
