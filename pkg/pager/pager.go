@@ -171,33 +171,33 @@ func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
 			// Page is in unpinned list
 			if (list_containing_page == pager.unpinnedList) {
 				pager.pageTable[pagenum].PopSelf()
-				pager.pinnedList.PushTail(page)
-				// pager.ptMtx.Unlock()
+				pager.pinnedList.PushTail(page_to_get)
+				page_to_get.Get()	
+				pager.ptMtx.Unlock()
 				return page_to_get, nil
 			} else if (list_containing_page == pager.pinnedList) {
 				// Page is in pinned list
 				page_to_get.Get()	
-				// pager.ptMtx.Unlock()
+				pager.ptMtx.Unlock()
 				return page_to_get, nil
 			}
 		} else {
 			// Page is not in page table, so we have to load from disk
 			new_page, err := pager.NewPage(pagenum)
 			if (err == nil) {
-				// pager.ptMtx.Unlock()
 				return nil, errors.New("NewPage() failed")
 			} else {
 				pager.maxPageNum++
 				pager.ReadPageFromDisk(new_page, pagenum)
 				new_page.Get()
 				new_page.pager.pinnedList.PushTail(new_page)
-				new_page.pager.pageTable[pagenum] = new_page.pager.pinnedList.PeekHead()
-				// pager.ptMtx.Unlock()
+				pager.ptMtx.Unlock()
 				return new_page, nil   
 			}          
 		}
-	}
+	} else {
 		return nil, errors.New("Could not retrieve page")
+	}
 }
 
 // Flush a particular page to disk.
