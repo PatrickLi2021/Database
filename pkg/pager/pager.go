@@ -159,46 +159,42 @@ func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
 
 // getPage returns the page corresponding to the given pagenum.
 func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
-	// pager.ptMtx.Lock()
-	// defer pager.ptMtx.Unlock()
-	if (pagenum < 0) {
-		return nil, errors.New("Invalid page")
-	} else {
+	if pagenum < 0 {
+		return nil, errors.New("invalid page number")
+	}	else {
 		pager.ptMtx.Lock()
-		// If pagenum is in memory and within the used range
-		_, in_table := pager.pageTable[pagenum]
-		if (in_table) {
-			list_containing_page := pager.pageTable[pagenum].GetList()
-			page_to_get := pager.pageTable[pagenum].GetKey().(*Page)
-			// Page is in unpinned list
-			if (list_containing_page == pager.unpinnedList) {
-				page_to_get.Get()	
-				pager.pageTable[pagenum].PopSelf()
-				pager.pinnedList.PushTail(page_to_get)
+		new_pg, status := pager.pageTable[pagenum]
+
+		if status { 
+			lst_page := new_pg.GetList()
+			if (lst_page == pager.pinnedList) {
+				pg_pin := (new_pg.GetKey()).(*Page)
+				pg_pin.Get()
 				pager.ptMtx.Unlock()
-				return page_to_get, nil
+				return pg_pin, nil
 			} else {
-				// Page is in pinned list
-				page_to_get.Get()	
+				page_unpinned_list := (new_pg.GetKey()).(*Page)
+				page_unpinned_list.Get()
+				new_pg.PopSelf()
+				pager.pinnedList.PushTail(page_unpinned_list)
 				pager.ptMtx.Unlock()
-				return page_to_get, nil
+				return page_unpinned_list, nil
 			}
 		} else {
-			// Page is not in page table, so we have to load from disk
 			new_page, err := pager.NewPage(pagenum)
-			if (err != nil) { 
-				pager.ptMtx.Unlock()
-				return nil, errors.New("NewPage() failed")
-			} else {
+			if err == nil {
 				pager.ReadPageFromDisk(new_page, pagenum)
 				pager.pinnedList.PushTail(new_page)
 				new_page.Get()
-				pager.maxPageNum = pager.GetNumPages() + 1
+				pager.maxPageNum = pager.maxPageNum + 1
 				pager.ptMtx.Unlock()
-				return new_page, nil  
-				} 
-			}           
+				return new_page, nil
+			} else {
+				pager.ptMtx.Unlock()
+				return nil, errors.New("Could not get new page")
+			}
 		}
+	}
 }
 
 // Flush a particular page to disk.
