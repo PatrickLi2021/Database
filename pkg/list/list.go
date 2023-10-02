@@ -53,14 +53,14 @@ func (list *List) PushHead(value interface{}) *Link {
 }
 
 func (list *List) PushTail(value interface{}) *Link {
-	new_link := Link{list: list, prev: list.PeekTail(), next: nil, value: value}
-	if list.PeekTail() != nil {
-		list.PeekTail().next = &new_link
-	} else {
-		list.head = &new_link
+	new_elem := Link{list: list, prev: list.tail, next: nil, value: value}
+	if list.head == nil || list.tail == nil {
+		list.head = &new_elem
+		list.tail = &new_elem
 	}
-	list.tail = &new_link
-	return &new_link
+	list.tail.next = &new_elem
+	list.tail = &new_elem
+	return &new_elem
 }
 
 // Find an element in a list given a boolean function, f, that evaluates to true on the desired element.
