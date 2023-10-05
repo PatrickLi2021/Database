@@ -3,18 +3,19 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
 	// "log"
 	// "net"
-	// "os"
-	// "os/signal"
-	// "syscall"
 
 	config "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/config"
 	list "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/list"
 	pager "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/pager"
 	repl "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/repl"
 
-	// db "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/db"
+	db "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/db"
 	// query "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/query"
 	// concurrency "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/concurrency"
 	// recovery "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/recovery"
@@ -26,17 +27,17 @@ import (
 const DEFAULT_PORT int = 8335
 
 // [BTREE]
-// // Listens for SIGINT or SIGTERM and calls table.CloseDB().
-// func setupCloseHandler(database *db.Database) {
-// 	c := make(chan os.Signal)
-// 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-// 	go func() {
-// 		<-c
-// 		fmt.Println("closehandler invoked")
-// 		database.Close()
-// 		os.Exit(0)
-// 	}()
-// }
+// Listens for SIGINT or SIGTERM and calls table.CloseDB().
+func setupCloseHandler(database *db.Database) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		fmt.Println("closehandler invoked")
+		database.Close()
+		os.Exit(0)
+	}()
+}
 
 // [CONCURRENCY]
 // // Start listening for connections at port `port`.
@@ -76,18 +77,18 @@ func main() {
 	var projectFlag = flag.String("project", "", "choose project: [go,pager,db,query,concurrency,recovery] (required)")
 
 	// [BTREE]
-	// var dbFlag = flag.String("db", "data/", "DB folder")
+	var dbFlag = flag.String("db", "data/", "DB folder")
 
 	// [CONCURRENCY]
 	// var portFlag = flag.Int("p", DEFAULT_PORT, "port number")
 	flag.Parse()
 
 	// [BTREE]
-	// // Open the db.
-	// database, err := db.Open(*dbFlag)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	// Open the db.
+	database, err := db.Open(*dbFlag)
+	if err != nil {
+		panic(err)
+	}
 
 	// [RECOVERY]
 	// // Set up the log file.
@@ -97,9 +98,9 @@ func main() {
 	// }
 
 	// [BTREE]
-	// // Setup close conditions.
-	// defer database.Close()
-	// setupCloseHandler(database)
+	// Setup close conditions.
+	defer database.Close()
+	setupCloseHandler(database)
 
 	// Set up REPL resources.
 	prompt := config.GetPrompt(*promptFlag)
@@ -128,9 +129,9 @@ func main() {
 		repls = append(repls, pRepl)
 
 	// [BTREE]
-	// case "db":
-	// 	server = false
-	// 	repls = append(repls, db.DatabaseRepl(database))
+	case "db":
+		server = false
+		repls = append(repls, db.DatabaseRepl(database))
 
 	// [QUERY]
 	// case "query":
