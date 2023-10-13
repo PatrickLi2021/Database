@@ -67,7 +67,7 @@ func (list *List) PushTail(value interface{}) *Link {
 func (list *List) Find(f func(*Link) bool) *Link {
 	var cur_elem *Link = list.head
 	for cur_elem != nil {
-		if f(cur_elem) == true {
+		if f(cur_elem) {
 			return cur_elem
 		}
 		cur_elem = cur_elem.next

@@ -7,24 +7,24 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"path/filepath"
 
 	config "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/config"
 	list "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/list"
-
 	directio "github.com/ncw/directio"
 )
 
 // Page size - defaults to 4kb.
 const PAGESIZE = int64(directio.BlockSize)
 
-// Number of pages.
-const NUMPAGES = config.NumPages
+// Maximum number of pages.
+const MAXPAGES = config.NumPages
 
 // Pagers manage pages of data read from a file.
 type Pager struct {
 	file         *os.File             // File descriptor.
-	maxPageNum   int64                // The number of pages used by this database (number of pages in the current pager)
-	ptMtx        sync.Mutex           // Page table mutex (this is a lock for the entire pager struct)
+	maxPageNum   int64                // The number of pages used by this database.
+	ptMtx        sync.Mutex           // Page table mutex.
 	freeList     *list.List           // Free page list.
 	unpinnedList *list.List           // Unpinned page list.
 	pinnedList   *list.List           // Pinned page list.
@@ -32,14 +32,14 @@ type Pager struct {
 }
 
 // Construct a new Pager.
-func NewPager() *Pager {
-	var pager *Pager = &Pager{}
+func NewPager() (pager *Pager) {
+	pager = &Pager{}
 	pager.pageTable = make(map[int64]*list.Link)
 	pager.freeList = list.NewList()
 	pager.unpinnedList = list.NewList()
 	pager.pinnedList = list.NewList()
-	frames := directio.AlignedBlock(int(PAGESIZE * NUMPAGES))
-	for i := 0; i < NUMPAGES; i++ {
+	frames := directio.AlignedBlock(int(PAGESIZE * MAXPAGES))
+	for i := 0; i < MAXPAGES; i++ {
 		frame := frames[i*int(PAGESIZE) : (i+1)*int(PAGESIZE)]
 		page := Page{
 			pager:    pager,
@@ -54,22 +54,22 @@ func NewPager() *Pager {
 }
 
 // HasFile checks if the pager is backed by disk.
-func (pager *Pager) HasFile() bool {
+func (pager *Pager) HasFile() (hasFile bool) {
 	return pager.file != nil
 }
 
 // GetFileName returns the file name.
-func (pager *Pager) GetFileName() string {
-	return pager.file.Name()
+func (pager *Pager) GetFileName() (filename string) {
+	return filepath.Base(pager.file.Name())
 }
 
 // GetNumPages returns the number of pages.
-func (pager *Pager) GetNumPages() int64 {
+func (pager *Pager) GetNumPages() (numPages int64) {
 	return pager.maxPageNum
 }
 
 // GetFreePN returns the next available page number.
-func (pager *Pager) GetFreePN() int64 {
+func (pager *Pager) GetFreePN() (nextPN int64) {
 	// Assign the first page number beyond the end of the file.
 	return pager.maxPageNum
 }
@@ -121,7 +121,7 @@ func (pager *Pager) Close() (err error) {
 }
 
 // Populate a page's data field, given a pagenumber.
-func (pager *Pager) ReadPageFromDisk(page *Page, pagenum int64) error {
+func (pager *Pager) ReadPageFromDisk(page *Page, pagenum int64) (err error) {
 	if _, err := pager.file.Seek(pagenum*PAGESIZE, 0); err != nil {
 		return err
 	}
@@ -131,103 +131,118 @@ func (pager *Pager) ReadPageFromDisk(page *Page, pagenum int64) error {
 	return nil
 }
 
-// NewPage returns an unused buffer from the free or unpinned list
+// newPage returns an unused buffer from the free or unpinned list
 // the ptMtx should be locked on entry
-func (pager *Pager) NewPage(pagenum int64) (*Page, error) {
-	// Evict page from free list
-	if (pager.freeList != nil && pager.freeList.PeekHead() != nil) {
-		free_page := pager.freeList.PeekHead().GetKey().(*Page)
-		free_page.pagenum = pagenum
-		free_page.pager = pager
-		free_page.pager.pageTable[pagenum] = pager.freeList.PeekHead()
-		// Remove this link from freeList
-		free_page.pager.freeList.PeekHead().PopSelf()
-		return free_page, nil
-	} else if (pager.unpinnedList.PeekHead() != nil && pager.HasFile()) {
-		// Evict page from unpinned list
-		evicted_page := pager.unpinnedList.PeekHead().GetKey().(*Page)
-		pager.FlushPage(evicted_page)
-		delete(pager.pageTable, evicted_page.pagenum)
-		evicted_page.pagenum = pagenum
-		evicted_page.pager = pager
-		evicted_page.pager.pageTable[pagenum] = pager.unpinnedList.PeekHead()
-		return evicted_page, nil
+func (pager *Pager) NewPage(pagenum int64) (newPage *Page, err error) {
+	/* SOLUTION {{{ */
+	if freeLink := pager.freeList.PeekHead(); freeLink != nil {
+		// Check the free list first
+		freeLink.PopSelf()
+		newPage = freeLink.GetKey().(*Page)
+	} else if unpinLink := pager.unpinnedList.PeekHead(); pager.HasFile() && unpinLink != nil {
+		// If no page was found, evict a page from the unpinned list.
+		// But skip this if our pager isn't backed by disk.
+		unpinLink.PopSelf()
+		newPage = unpinLink.GetKey().(*Page)
+		pager.FlushPage(newPage)
+		delete(pager.pageTable, newPage.pagenum)
 	} else {
-		return nil, errors.New("Could not create new page")
+		// If still no page is found, error.
+		return nil, errors.New("no available pages")
 	}
+	newPage.pagenum = pagenum
+	newPage.dirty = false
+	newPage.pinCount = 1
+	return newPage, nil
+	/* SOLUTION }}} */
 }
 
-// getPage returns the page corresponding to the given pagenum.
+// GetPage returns the page corresponding to the given pagenum.
 func (pager *Pager) GetPage(pagenum int64) (page *Page, err error) {
+	/* SOLUTION {{{ */
+	// Input checking.
+	if pagenum < 0 {
+		return nil, errors.New("invalid pagenum")
+	}
+	// Try to get from page table.
+	var newLink *list.Link
 	pager.ptMtx.Lock()
 	defer pager.ptMtx.Unlock()
-	if (pagenum < 0) {
-		return nil, errors.New("Invalid page")
-	} else if (pagenum >= 0) {
-		// pager.ptMtx.Lock()
-		// If pagenum is in memory and within the used range
-		_, in_table := pager.pageTable[pagenum]
-		if (in_table) {
-			list_containing_page := pager.pageTable[pagenum].GetList()
-			page_to_get := pager.pageTable[pagenum].GetKey().(*Page)
-			// Page is in unpinned list
-			if (list_containing_page == pager.unpinnedList) {
-				pager.pageTable[pagenum].PopSelf()
-				pager.pinnedList.PushTail(page_to_get)
-				page_to_get.Get()	
-				// pager.ptMtx.Unlock()
-				return page_to_get, nil
-			} else {
-				// Page is in pinned list
-				page_to_get.Get()	
-				// pager.ptMtx.Unlock()
-				return page_to_get, nil
-			}
-		} else {
-			// Page is not in page table, so we have to load from disk
-			new_page, err := pager.NewPage(pagenum)
-			if (err != nil) { 
-				// pager.ptMtx.Unlock()
-				return nil, errors.New("NewPage() failed")
-			} else {
-				pager.maxPageNum = pager.maxPageNum + 1
-				pager.ReadPageFromDisk(new_page, pagenum)
-				new_page.Get()
-				new_page.pager.pinnedList.PushTail(new_page)
-				// pager.ptMtx.Unlock()
-				return new_page, nil   
-			}          
+	link, ok := pager.pageTable[pagenum]
+	if ok {
+		page = link.GetKey().(*Page)
+		// Move the page to the pinned list if needed.
+		if link.GetList() == pager.unpinnedList {
+			link.PopSelf()
+			newLink = pager.pinnedList.PushTail(page)
+			pager.pageTable[pagenum] = newLink
 		}
-	} else {
-		return nil, errors.New("Could not retrieve page")
+		page.Get()
+		return page, nil
 	}
+	// Else, create a buffer to hold the new page in.
+	page, err = pager.NewPage(pagenum)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if we need to create a new page.
+	if pagenum >= pager.maxPageNum {
+		pager.maxPageNum++
+		page.dirty = true
+	} else {
+		// Read an existing page in.
+		page.dirty = false
+		err = pager.ReadPageFromDisk(page, pagenum)
+		if err != nil {
+			pager.freeList.PushTail(page)
+			return nil, err
+		}
+	}
+	// Insert the page into our list of pages.
+	newLink = pager.pinnedList.PushTail(page)
+	pager.pageTable[pagenum] = newLink
+	return page, nil
+	/* SOLUTION }}} */
 }
 
 // Flush a particular page to disk.
 func (pager *Pager) FlushPage(page *Page) {
-	if (page.dirty && page.pager.HasFile()) {
-		page.pager.file.WriteAt(*page.data, page.pagenum * 4096)
-		page.dirty = false
+	/* SOLUTION {{{ */
+	if pager.HasFile() && page.IsDirty() {
+		pager.file.WriteAt(
+			*page.data,
+			page.pagenum*PAGESIZE,
+		)
+		page.SetDirty(false)
 	}
+	/* SOLUTION }}} */
 }
 
 // Flushes all dirty pages.
 func (pager *Pager) FlushAllPages() {
-	// Flush all pages from unpinned list
-	current_head_pinned := pager.unpinnedList.PeekHead()
-	for (current_head_pinned != nil) {
-		if (current_head_pinned.GetKey().(*Page).dirty) {
-			current_head_pinned.GetKey().(*Page).pager.FlushPage(current_head_pinned.GetKey().(*Page))
-		}
-		current_head_pinned = current_head_pinned.GetNext()		
+	/* SOLUTION {{{ */
+	writer := func(link *list.Link) {
+		page := link.GetKey().(*Page)
+		pager.FlushPage(page)
 	}
-	// Flush all pages from pinned list
-	current_head_unpinned := pager.pinnedList.PeekHead()
-	for (current_head_unpinned != nil) {
-		if (current_head_unpinned.GetKey().(*Page).dirty) {
-			current_head_unpinned.GetKey().(*Page).pager.FlushPage(current_head_unpinned.GetKey().(*Page))
-		}
-		current_head_unpinned = current_head_unpinned.GetNext()		
+	pager.pinnedList.Map(writer)
+	pager.unpinnedList.Map(writer)
+	/* SOLUTION }}} */
+}
+
+// [RECOVERY] Block all updates.
+func (pager *Pager) LockAllUpdates() {
+	pager.ptMtx.Lock()
+	for _, page := range pager.pageTable {
+		page.GetKey().(*Page).LockUpdates()
 	}
-	// Flush from both unpinned list and pinned list
+}
+
+// [RECOVERY] Enable updates.
+func (pager *Pager) UnlockAllUpdates() {
+	for _, page := range pager.pageTable {
+		page.GetKey().(*Page).UnlockUpdates()
+	}
+	pager.ptMtx.Unlock()
 }
