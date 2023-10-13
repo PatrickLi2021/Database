@@ -252,7 +252,20 @@ func (node *InternalNode) delete(key int64) {
 
 // split is a helper function that splits an internal node, then propagates the split upwards.
 func (node *InternalNode) split() Split {
-	panic("function not yet implemented")
+	// Create a new internal node
+	new_internal_node, _ := createInternalNode(node.page.GetPager())
+	defer new_internal_node.getPage().Put()
+	// Compute the midpoint and transfer the keys to the new node
+	midpoint_position := node.numKeys / 2
+	for i := midpoint_position + 1; i < node.numKeys; i++ {
+		current_key := node.getKeyAt(i)
+		current_value, found := node.get(current_key)
+		if found {
+			new_internal_node.insert(current_key, current_value, false)
+		}
+	}
+	// Return a split (what is the split.key in here?)
+	return Split{true, node.getKeyAt(midpoint_position), node.page.GetPageNum(), new_internal_node.page.GetPageNum(), nil}
 }
 
 // get returns the value associated with a given key from the leaf node.
