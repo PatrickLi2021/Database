@@ -53,26 +53,31 @@ func (node *LeafNode) search(key int64) int64 {
 
 // insert finds the appropriate place in a leaf node to insert a new tuple.
 func (node *LeafNode) insert(key int64, value int64, update bool) Split {
+	// Get position by searching the key
 	position := node.search(key)
-	// We are updating something that's not already there
+	// Trying to update something that's not already there
 	if position == node.numKeys && update {
-		return Split{err: errors.New("could not find item to update")}
+		return Split{err: fmt.Errorf("could not find item to update")}
 
+		// Duplicate key-value pair is found
 	} else if node.getKeyAt(position) == key && node.getValueAt(position) == value {
-		return Split{err: errors.New("duplicate found")}
-
-	} 
+		return Split{err: fmt.Errorf("duplicate found")}
+	
+	// Update is false
+	} else if update == false {
+		return Split{err: fmt.Errorf("update is false, cannot update")}
+	}
 	// Update numKeys to account for the new element being inserted
 	node.updateNumKeys(node.numKeys + 1)
 	
 	// Shift entries to the right after insertion position
 	for i := position; i < position + (node.numKeys - position); i++ {
-		current_entry := node.getEntry(position)
-		node.modifyEntry(position + 1, current_entry)
+		current_entry := node.getEntry(i)
+		node.modifyEntry(i + 1, current_entry)
 	}
 
 	// Perform the actual insertion
-	if node.getValueAt(position) != key && update {
+	if node.getValueAt(position) != value && update {
 		node.updateKeyAt(position, key)
 		node.updateValueAt(position, value)
 
@@ -82,9 +87,10 @@ func (node *LeafNode) insert(key int64, value int64, update bool) Split {
 
 	// Check if we need to split
 	if node.numKeys > ENTRIES_PER_LEAF_NODE {
-		key_to_promote := node.getKeyAt(node.search(node.numKeys / 2))
+		// key_to_promote := node.getKeyAt(node.search(node.numKeys / 2))
 		var new_split Split = node.split()
-		return Split{isSplit: true, key: key_to_promote, leftPN: new_split.leftPN, rightPN: new_split.rightPN}
+		// return Split{isSplit: true, key: key_to_promote, leftPN: new_split.leftPN, rightPN: new_split.rightPN}
+		return new_split
 	
 	} else {
 		return Split{isSplit: false}
@@ -112,12 +118,13 @@ func (node *LeafNode) delete(key int64) {
 func (node *LeafNode) split() Split {
 	// Create a new leaf node
 	new_leaf_node, _ := createLeafNode(node.page.GetPager())
-	defer node.page.Put()
+	defer new_leaf_node.getPage().Put()
 
-	// Find median index
+	// Find median index and the key at that index
 	split_index := node.numKeys / 2
-	promoted_key := node.search(split_index)
+	promoted_key := node.getKeyAt(node.search(split_index))
 
+	// Transfer entries to the new node
 	var keys_added int64 = 0
 	for i := node.numKeys - 1; i >= split_index; i-- {
 		key_at_index := node.getEntry(i).GetKey()
@@ -126,8 +133,11 @@ func (node *LeafNode) split() Split {
 		new_leaf_node.insert(key_at_index, value_at_index, false)
 		keys_added = keys_added + 1
 	} 	
+	// Update number of keys for the left child and the right child
 	new_leaf_node.updateNumKeys(keys_added)
 	node.updateNumKeys(node.numKeys - keys_added)
+	// Set new right sibling for split node
+	node.setRightSibling(new_leaf_node.page.GetPageNum())
 	return Split{true, promoted_key, new_leaf_node.page.GetPageNum(), node.page.GetPageNum(), nil}
 }
 
@@ -213,6 +223,7 @@ func (node *InternalNode) insert(key int64, value int64, update bool) Split {
 // insertSplit inserts a split result into an internal node.
 // If this insertion results in another split, the split is cascaded upwards.
 func (node *InternalNode) insertSplit(split Split) Split {
+	// Search for key position
 	position := node.search(split.key)
 	// Check for duplicates
 	if node.getKeyAt(position) == split.key {
