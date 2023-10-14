@@ -101,16 +101,17 @@ func (table *HashTable) ExtendTable() {
 func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 	// Create new bucket and add to table's list of buckets
 	new_bucket, _ := NewHashBucket(table.GetPager(), bucket.depth + 1)
-	table.buckets = append(table.buckets, new_bucket.GetPage().GetPageNum())
-	// Increase local depths of both buckets and global depth of table
-	new_bucket.depth = bucket.GetDepth() + 1
-	bucket.depth = bucket.GetDepth() + 1
+	table.buckets = append(table.buckets, new_bucket.page.GetPager().GetFreePN())
 	table.depth = table.GetDepth() + 1
 	// Create new hash by prepending "1" to old hash
 	binaryString := strconv.FormatInt(int64(hash), 2)
 	new_hash_string := "1" + binaryString
 	new_hash, _ := strconv.ParseInt(new_hash_string, 2, 64)
-	table.buckets[new_hash] = new_bucket.GetPage().GetPageNum()
+	table.buckets[new_hash] = new_bucket.GetPage().GetPageNum()	
+	// Increase local depths of both buckets
+	new_bucket.depth = bucket.GetDepth() + 1
+	bucket.depth = bucket.GetDepth() + 1
+
 	// Redistribute keys in overflowed bucket
 	for i := 0; i < int(bucket.numKeys); i++ {
 		current_key := bucket.getKeyAt(int64(i))
@@ -130,6 +131,11 @@ func (table *HashTable) Insert(key int64, value int64) error {
 	}
 	defer bucket.page.Put()
 	bucket.Insert(key, value)
+	fmt.Println("successful insert")
+	// Split if the bucket overflows
+	if bucket.numKeys >= BUCKETSIZE {
+		table.Split(bucket, hash)
+	}
 	return nil
 }
 
@@ -167,6 +173,7 @@ func (table *HashTable) Select() ([]utils.Entry, error) {
 		for j := 0; j < int(current_bucket.numKeys); j++ {
 			entry_to_add := current_bucket.getEntry(int64(j))
 			entries = append(entries, entry_to_add)
+			fmt.Println("able to insert entry into table")
 		}
 	}
 	return entries, nil
