@@ -59,12 +59,12 @@ func (node *LeafNode) insert(key int64, value int64, update bool) Split {
 	if position == node.numKeys && update {
 		return Split{err: fmt.Errorf("could not find item to update")}
 
-		// Duplicate key-value pair is found
+	// Duplicate key-value pair is found
 	} else if node.getKeyAt(position) == key && node.getValueAt(position) == value {
 		return Split{err: fmt.Errorf("duplicate found")}
 	
 	// Update is false
-	} else if update == false {
+	} else if !update {
 		return Split{err: fmt.Errorf("update is false, cannot update")}
 	}
 	// Update numKeys to account for the new element being inserted

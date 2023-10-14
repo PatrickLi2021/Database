@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"sync"
+	"strconv"
 
 	pager "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/pager"
 	utils "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/utils"
@@ -98,12 +99,38 @@ func (table *HashTable) ExtendTable() {
 
 // Split the given bucket into two, extending the table if necessary.
 func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
-	panic("function not yet implemented")
+	// Create new bucket and add to table's list of buckets
+	new_bucket, _ := NewHashBucket(table.GetPager(), bucket.depth + 1)
+	table.buckets = append(table.buckets, new_bucket.GetPage().GetPageNum())
+	// Increase local depths of both buckets and global depth of table
+	new_bucket.depth = bucket.GetDepth() + 1
+	bucket.depth = bucket.GetDepth() + 1
+	table.depth = table.GetDepth() + 1
+	// Create new hash by prepending "1" to old hash
+	binaryString := strconv.FormatInt(int64(hash), 2)
+	new_hash_string := "1" + binaryString
+	new_hash, _ := strconv.ParseInt(new_hash_string, 2, 64)
+	table.buckets[new_hash] = new_bucket.GetPage().GetPageNum()
+	// Redistribute keys in overflowed bucket
+	for i := 0; i < int(bucket.numKeys); i++ {
+		current_key := bucket.getKeyAt(int64(i))
+		current_value := bucket.getValueAt(int64(i))
+		table.Insert(current_key, current_value)
+	}
+	return nil
 }
 
 // Inserts the given key-value pair, splits if necessary.
 func (table *HashTable) Insert(key int64, value int64) error {
-	panic("function not yet implemented")
+	// Hash the key and find which bucket the key should be inserted into
+	hash := Hasher(key, table.depth)
+	bucket, err := table.GetBucket(hash)
+	if err != nil {
+		return err
+	}
+	defer bucket.page.Put()
+	bucket.Insert(key, value)
+	return nil
 }
 
 // Update the given key-value pair.
@@ -130,7 +157,19 @@ func (table *HashTable) Delete(key int64) error {
 
 // Select all entries in this table.
 func (table *HashTable) Select() ([]utils.Entry, error) {
-	panic("function not yet implemented")
+	// Create a new array of Entries
+	entries := make([]utils.Entry, 0)
+	// Iterate over every bucket in the table
+	bucket_page_nums := table.GetBuckets()
+	for i := 0; i < len(bucket_page_nums); i++ {
+		current_bucket, _ := table.GetBucketByPN(bucket_page_nums[i])
+		// Iterate over every entry in the bucket
+		for j := 0; j < int(current_bucket.numKeys); j++ {
+			entry_to_add := current_bucket.getEntry(int64(j))
+			entries = append(entries, entry_to_add)
+		}
+	}
+	return entries, nil
 }
 
 // Print out each bucket.

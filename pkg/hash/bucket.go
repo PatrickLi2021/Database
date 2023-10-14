@@ -50,7 +50,17 @@ func (bucket *HashBucket) Find(key int64) (utils.Entry, bool) {
 
 // Inserts the given key-value pair, splits if necessary.
 func (bucket *HashBucket) Insert(key int64, value int64) (bool, error) {
-	panic("function not yet implemented")
+	// Perform insertion
+	index_to_insert := bucket.numKeys
+	new_entry := HashEntry{key: key, value: value}
+	bucket.updateNumKeys(bucket.numKeys + 1)
+	bucket.modifyEntry(index_to_insert, new_entry)
+	// Check if split needs to occur
+	if bucket.numKeys >= BUCKETSIZE {
+		return true, nil
+	} else {
+		return false, nil
+	}
 }
 
 // Update the given key-value pair, should never split.
