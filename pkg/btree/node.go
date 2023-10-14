@@ -63,10 +63,7 @@ func (node *LeafNode) insert(key int64, value int64, update bool) Split {
 	} else if node.getKeyAt(position) == key && node.getValueAt(position) == value {
 		return Split{err: fmt.Errorf("duplicate found")}
 	
-	// Update is false
-	} else if !update {
-		return Split{err: fmt.Errorf("update is false, cannot update")}
-	}
+	} 
 	// Update numKeys to account for the new element being inserted
 	node.updateNumKeys(node.numKeys + 1)
 	
@@ -122,7 +119,7 @@ func (node *LeafNode) split() Split {
 
 	// Find median index and the key at that index
 	split_index := node.numKeys / 2
-	promoted_key := node.getKeyAt(node.search(split_index))
+	promoted_key := node.getKeyAt(split_index)
 
 	// Transfer entries to the new node
 	var keys_added int64 = 0
