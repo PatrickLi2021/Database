@@ -133,9 +133,9 @@ func (table *HashTable) Insert(key int64, value int64) error {
 	bucket.Insert(key, value)
 	fmt.Println("successful insert")
 	// Split if the bucket overflows
-	if bucket.numKeys >= BUCKETSIZE {
-		table.Split(bucket, hash)
-	}
+	// if bucket.numKeys >= BUCKETSIZE {
+	// 	table.Split(bucket, hash)
+	// }
 	return nil
 }
 
