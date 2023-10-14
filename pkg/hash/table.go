@@ -103,6 +103,16 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 	new_bucket, _ := NewHashBucket(table.GetPager(), bucket.depth + 1)
 	table.buckets = append(table.buckets, new_bucket.page.GetPager().GetFreePN())
 	table.depth = table.GetDepth() + 1
+	
+	// If local depth is equal to global depth
+	if bucket.depth == table.GetDepth() {
+		table.ExtendTable()
+		// // Reassign hashes for new buckets in extended table
+		// for i := len(table.GetBuckets()) / 2; i < len(table.GetBuckets()); i++ {
+
+		// }
+	}
+	
 	// Create new hash by prepending "1" to old hash
 	binaryString := strconv.FormatInt(int64(hash), 2)
 	new_hash_string := "1" + binaryString
