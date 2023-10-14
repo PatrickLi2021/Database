@@ -98,31 +98,74 @@ func (table *HashTable) ExtendTable() {
 
 // Split the given bucket into two, extending the table if necessary.
 func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
-	// Create new bucket
-	new_bucket, _ := NewHashBucket(table.GetPager(), bucket.depth + 1)
-	
-	// If local depth is equal to global depth
-	if bucket.depth == table.GetDepth() {
-		table.ExtendTable()
-	}
-	// Create new hash by prepending "1" to old hash
-	new_hash := (hash << 1) | 1
-	table.buckets[new_hash] = new_bucket.GetPage().GetPageNum()	
-	// Increase local depths of both buckets
-	new_bucket.depth = bucket.GetDepth() + 1
-	bucket.depth = bucket.GetDepth() + 1
-	// Map slots in table to all buckets
-	for i := len(table.buckets) / 2; i < len(table.buckets); i++ {
-		table.buckets[new_hash] = table.buckets[i]
-	}
+	// If local depth less than global depth, just split bucket
+	if bucket.GetDepth() < table.GetDepth() {
+		new_bucket, bucket_error := NewHashBucket(table.GetPager(), bucket.depth + 1)
+		if bucket_error != nil {
+			return bucket_error
+		}
+		defer new_bucket.page.Put()
+		table.buckets[hash] = new_bucket.GetPage().GetPageNum()
+		bucket.depth = bucket.GetDepth() + 1
+		overflowed_bucket, get_PN_err := table.GetBucketByPN(table.buckets[hash])
+		if get_PN_err != nil {
+			return get_PN_err
+		}
+		num_keys_in_overflowed_bucket := overflowed_bucket.numKeys
+		// Reassign entries in overflowed bucket
+		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
+			current_key := bucket.getKeyAt(int64(i))
+			current_value := bucket.getValueAt(int64(i))
+			insert_error := table.Insert(current_key, current_value)
+			if insert_error != nil {
+				return insert_error
+			}
+		}
+		return nil
 
-	// Redistribute keys in overflowed bucket
-	for i := 0; i < int(bucket.numKeys); i++ {
-		current_key := bucket.getKeyAt(int64(i))
-		current_value := bucket.getValueAt(int64(i))
-		table.Insert(current_key, current_value)
+	// 	If local depth is equal to global depth, double size of table AND split bucket
+	} else if bucket.GetDepth() == table.GetDepth() {
+		// Extend table, increase local depth of original and new buckets
+		prev_global_depth := table.GetDepth()
+		table.ExtendTable()
+		new_bucket, bucket_error := NewHashBucket(table.GetPager(), bucket.depth + 1)
+		if bucket_error != nil {
+			return bucket_error
+		}
+		defer new_bucket.page.Put()
+		bucket.depth = bucket.GetDepth() + 1
+
+		// Grab only the x rightmost bits of the hash, where x is the old local depth
+		bit_mask := (1 << uint(prev_global_depth)) - 1
+		for i := len(table.buckets) / 2; i < len(table.buckets); i++ {
+			// Maps the slot in the table that corresponds to the hash to the new bucket (using only x rightmost bits)
+			if int64(i & bit_mask) == int64(hash & int64(bit_mask)) {
+				table.buckets[i] = new_bucket.page.GetPageNum()
+			
+			// Anything that didn't cause a split will have 1 more pointer pointing to it now
+				} else {
+				table.buckets[i] = table.buckets[i & bit_mask]
+			}
+		}
+		overflowed_bucket, get_PN_err := table.GetBucketByPN(table.buckets[hash])
+			if get_PN_err != nil {
+				return get_PN_err
+			}
+		num_keys_in_overflowed_bucket := overflowed_bucket.numKeys
+		// Reassign entries in overflowed bucket
+		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
+			current_key := bucket.getKeyAt(int64(i))
+			current_value := bucket.getValueAt(int64(i))
+			insert_error := table.Insert(current_key, current_value)
+			if insert_error != nil {
+				return insert_error
+			}
+		}
+		return nil
+	// Local depth is greater than global depth (which cannot be possible)
+	} else {
+		return fmt.Errorf("local depth is greater than global depth")
 	}
-	return nil
 }
 
 // Inserts the given key-value pair, splits if necessary.
@@ -136,7 +179,7 @@ func (table *HashTable) Insert(key int64, value int64) error {
 	defer bucket.page.Put()
 	bucket.Insert(key, value)
 	fmt.Println("successful insert")
-	// Split if the bucket overflows
+	//  Split if the bucket overflows
 	if bucket.numKeys >= BUCKETSIZE {
 		table.Split(bucket, hash)
 	}

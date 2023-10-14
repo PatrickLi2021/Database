@@ -62,33 +62,26 @@ func (node *LeafNode) insert(key int64, value int64, update bool) Split {
 	// Duplicate key-value pair is found
 	} else if node.getKeyAt(position) == key && node.getValueAt(position) == value {
 		return Split{err: fmt.Errorf("duplicate found")}
-	
 	} 
 	// Update numKeys to account for the new element being inserted
 	node.updateNumKeys(node.numKeys + 1)
 	
 	// Shift entries to the right after insertion position
-	for i := position; i < position + (node.numKeys - position); i++ {
+	for i := position; i < node.numKeys; i++ {
 		current_entry := node.getEntry(i)
 		node.modifyEntry(i + 1, current_entry)
 	}
-
 	// Perform the actual insertion
-	if node.getValueAt(position) != value && update {
+	if update {
 		node.updateKeyAt(position, key)
 		node.updateValueAt(position, value)
-
-	} else if node.getKeyAt(position) == key && node.getValueAt(position) != value && update {
-		node.updateValueAt(position, value)		
-	} 
-
+	}
 	// Check if we need to split
 	if node.numKeys > ENTRIES_PER_LEAF_NODE {
 		// key_to_promote := node.getKeyAt(node.search(node.numKeys / 2))
 		var new_split Split = node.split()
 		// return Split{isSplit: true, key: key_to_promote, leftPN: new_split.leftPN, rightPN: new_split.rightPN}
 		return new_split
-	
 	} else {
 		return Split{isSplit: false}
 	}
@@ -124,10 +117,10 @@ func (node *LeafNode) split() Split {
 	// Transfer entries to the new node
 	var keys_added int64 = 0
 	for i := node.numKeys - 1; i >= split_index; i-- {
-		key_at_index := node.getEntry(i).GetKey()
-		value_at_index := node.getEntry(i).GetValue()
-		node.delete(key_at_index)
+		key_at_index := node.getKeyAt(i)
+		value_at_index := node.getValueAt(i)
 		new_leaf_node.insert(key_at_index, value_at_index, false)
+		node.delete(key_at_index)
 		keys_added = keys_added + 1
 	} 	
 	// Update number of keys for the left child and the right child
@@ -135,7 +128,7 @@ func (node *LeafNode) split() Split {
 	node.updateNumKeys(node.numKeys - keys_added)
 	// Set new right sibling for split node
 	node.setRightSibling(new_leaf_node.page.GetPageNum())
-	return Split{true, promoted_key, new_leaf_node.page.GetPageNum(), node.page.GetPageNum(), nil}
+	return Split{true, promoted_key, node.page.GetPageNum(), new_leaf_node.page.GetPageNum(), nil}
 }
 
 // get returns the value associated with a given key from the leaf node.
