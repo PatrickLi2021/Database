@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"sync"
-	"strconv"
+	"sync"	
 
 	pager "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/pager"
 	utils "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/utils"
@@ -99,28 +98,23 @@ func (table *HashTable) ExtendTable() {
 
 // Split the given bucket into two, extending the table if necessary.
 func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
-	// Create new bucket and add to table's list of buckets
+	// Create new bucket
 	new_bucket, _ := NewHashBucket(table.GetPager(), bucket.depth + 1)
-	table.buckets = append(table.buckets, new_bucket.page.GetPager().GetFreePN())
-	table.depth = table.GetDepth() + 1
 	
 	// If local depth is equal to global depth
 	if bucket.depth == table.GetDepth() {
 		table.ExtendTable()
-		// // Reassign hashes for new buckets in extended table
-		// for i := len(table.GetBuckets()) / 2; i < len(table.GetBuckets()); i++ {
-
-		// }
 	}
-	
 	// Create new hash by prepending "1" to old hash
-	binaryString := strconv.FormatInt(int64(hash), 2)
-	new_hash_string := "1" + binaryString
-	new_hash, _ := strconv.ParseInt(new_hash_string, 2, 64)
+	new_hash := (hash << 1) | 1
 	table.buckets[new_hash] = new_bucket.GetPage().GetPageNum()	
 	// Increase local depths of both buckets
 	new_bucket.depth = bucket.GetDepth() + 1
 	bucket.depth = bucket.GetDepth() + 1
+	// Map slots in table to all buckets
+	for i := len(table.buckets) / 2; i < len(table.buckets); i++ {
+		table.buckets[new_hash] = table.buckets[i]
+	}
 
 	// Redistribute keys in overflowed bucket
 	for i := 0; i < int(bucket.numKeys); i++ {
