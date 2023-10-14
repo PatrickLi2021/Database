@@ -57,10 +57,8 @@ func (bucket *HashBucket) Insert(key int64, value int64) (bool, error) {
 	bucket.modifyEntry(index_to_insert, new_entry)
 	// Check if split needs to occur
 	if bucket.numKeys >= BUCKETSIZE {
-		fmt.Println("split occurred when doing bucket insert")
 		return true, nil
 	} else {
-		fmt.Println("no split occurred when doing bucket insert")
 		return false, nil
 	}
 }

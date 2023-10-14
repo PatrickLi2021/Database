@@ -178,7 +178,6 @@ func (table *HashTable) Insert(key int64, value int64) error {
 	}
 	defer bucket.page.Put()
 	bucket.Insert(key, value)
-	fmt.Println("successful insert")
 	//  Split if the bucket overflows
 	if bucket.numKeys >= BUCKETSIZE {
 		table.Split(bucket, hash)
@@ -220,7 +219,6 @@ func (table *HashTable) Select() ([]utils.Entry, error) {
 		for j := 0; j < int(current_bucket.numKeys); j++ {
 			entry_to_add := current_bucket.getEntry(int64(j))
 			entries = append(entries, entry_to_add)
-			fmt.Println("able to insert entry into table")
 		}
 	}
 	return entries, nil
