@@ -105,8 +105,8 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 			return bucket_error
 		}
 		defer new_bucket.page.Put()
-		table.buckets[hash] = new_bucket.GetPage().GetPageNum()
-		bucket.depth = bucket.GetDepth() + 1
+		table.buckets[hash] = new_bucket.page.GetPageNum()
+		bucket.updateDepth(bucket.depth + 1)
 		overflowed_bucket, get_PN_err := table.GetBucketByPN(table.buckets[hash])
 		if get_PN_err != nil {
 			return get_PN_err
@@ -133,7 +133,7 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 			return bucket_error
 		}
 		defer new_bucket.page.Put()
-		bucket.depth = bucket.GetDepth() + 1
+		bucket.updateDepth(bucket.depth + 1)
 
 		// Grab only the x rightmost bits of the hash, where x is the old local depth
 		bit_mask := (1 << uint(prev_global_depth)) - 1
@@ -141,7 +141,6 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 			// Maps the slot in the table that corresponds to the hash to the new bucket (using only x rightmost bits)
 			if int64(i & bit_mask) == int64(hash & int64(bit_mask)) {
 				table.buckets[i] = new_bucket.page.GetPageNum()
-			
 			// Anything that didn't cause a split will have 1 more pointer pointing to it now
 				} else {
 				table.buckets[i] = table.buckets[i & bit_mask]
@@ -171,15 +170,25 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 // Inserts the given key-value pair, splits if necessary.
 func (table *HashTable) Insert(key int64, value int64) error {
 	// Hash the key and find which bucket the key should be inserted into
-	hash := Hasher(key, table.depth)
+	hash := Hasher(key, table.GetDepth())
 	bucket, err := table.GetBucket(hash)
 	if err != nil {
 		return err
 	}
-	bucket.Insert(key, value)
+	split, insert_error := bucket.Insert(key, value)
+	if insert_error != nil {
+		return insert_error
+	}
 	//  Split if the bucket overflows
-	if bucket.numKeys > BUCKETSIZE {
-		table.Split(bucket, hash)
+	if split {
+		fmt.Println("split occurring!!!!!!!!!")
+		fmt.Println(bucket.depth)
+		fmt.Println(table.depth)
+		fmt.Println(hash)
+		split_error := table.Split(bucket, hash)
+		if split_error != nil {
+			return split_error
+		}
 	}
 	return nil
 }
