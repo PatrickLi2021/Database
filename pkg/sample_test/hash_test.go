@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -67,22 +68,30 @@ func testHashInsertTenNoWrite(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+		fmt.Println("successful insert")
 	}
 	// Retrieve entries
 	for i := int64(0); i <= 10; i++ {
+		fmt.Println("attempted find")
+		fmt.Println(i)
 		entry, err := index.Find(i)
 		if err != nil {
+			fmt.Println("In 1")
 			t.Error(err)
 		}
 		if entry == nil {
+			fmt.Println("In 2")
 			t.Error("Inserted entry could not be found")
 		}
 		if entry.GetKey() != i {
+			fmt.Println("In 3")
 			t.Error("Entry with wrong entry was found")
 		}
 		if entry.GetValue() != i%hash_salt {
+			fmt.Println("In 4")
 			t.Error("Entry found has the wrong value")
 		}
+		fmt.Println("success")
 	}
 	index.Close()
 }
