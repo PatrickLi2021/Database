@@ -107,11 +107,7 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		defer new_bucket.page.Put()
 		table.buckets[hash] = new_bucket.page.GetPageNum()
 		bucket.updateDepth(bucket.depth + 1)
-		overflowed_bucket, get_PN_err := table.GetBucketByPN(table.buckets[hash])
-		if get_PN_err != nil {
-			return get_PN_err
-		}
-		num_keys_in_overflowed_bucket := overflowed_bucket.numKeys
+		num_keys_in_overflowed_bucket := bucket.numKeys
 		// Reassign entries in overflowed bucket
 		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
 			current_key := bucket.getKeyAt(int64(i))
@@ -146,11 +142,7 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 				table.buckets[i] = table.buckets[i & bit_mask]
 			}
 		}
-		overflowed_bucket, get_PN_err := table.GetBucketByPN(table.buckets[hash])
-			if get_PN_err != nil {
-				return get_PN_err
-			}
-		num_keys_in_overflowed_bucket := overflowed_bucket.numKeys
+		num_keys_in_overflowed_bucket := bucket.numKeys
 		// Reassign entries in overflowed bucket
 		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
 			current_key := bucket.getKeyAt(int64(i))
