@@ -106,7 +106,7 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		}
 		defer new_bucket.page.Put()
 		table.buckets[hash] = new_bucket.page.GetPageNum()
-		bucket.updateDepth(bucket.depth + 1)
+		bucket.depth = bucket.GetDepth() + 1
 		num_keys_in_overflowed_bucket := bucket.numKeys
 		// Reassign entries in overflowed bucket
 		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
@@ -133,7 +133,7 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 			return bucket_error
 		}
 		defer new_bucket.page.Put()
-		bucket.updateDepth(bucket.depth + 1)
+		bucket.depth = bucket.GetDepth() + 1
 
 		// Grab only the x rightmost bits of the hash, where x is the old local depth
 		bit_mask := (1 << uint(prev_global_depth)) - 1
