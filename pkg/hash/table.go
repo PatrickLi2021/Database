@@ -112,6 +112,10 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
 			current_key := bucket.getKeyAt(int64(i))
 			current_value := bucket.getValueAt(int64(i))
+			delete_error := bucket.Delete(current_key)
+			if delete_error != nil {
+				return delete_error
+			}
 			insert_error := table.Insert(current_key, current_value)
 			if insert_error != nil {
 				return insert_error
@@ -147,6 +151,10 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
 			current_key := bucket.getKeyAt(int64(i))
 			current_value := bucket.getValueAt(int64(i))
+			delete_error := bucket.Delete(current_key)
+			if delete_error != nil {
+				return delete_error
+			}
 			insert_error := table.Insert(current_key, current_value)
 			if insert_error != nil {
 				return insert_error
