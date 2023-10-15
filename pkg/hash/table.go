@@ -214,7 +214,10 @@ func (table *HashTable) Select() ([]utils.Entry, error) {
 	// Iterate over every bucket in the table
 	bucket_page_nums := table.GetBuckets()
 	for i := 0; i < len(bucket_page_nums); i++ {
-		current_bucket, _ := table.GetBucketByPN(bucket_page_nums[i])
+		current_bucket, get_bucket_error := table.GetBucketByPN(bucket_page_nums[i])
+		if get_bucket_error != nil {
+			return entries, get_bucket_error
+		}
 		// Iterate over every entry in the bucket
 		for j := 0; j < int(current_bucket.numKeys); j++ {
 			entry_to_add := current_bucket.getEntry(int64(j))
