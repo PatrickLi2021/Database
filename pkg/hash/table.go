@@ -176,7 +176,6 @@ func (table *HashTable) Insert(key int64, value int64) error {
 	if err != nil {
 		return err
 	}
-	defer bucket.page.Put()
 	bucket.Insert(key, value)
 	//  Split if the bucket overflows
 	if bucket.numKeys > BUCKETSIZE {
