@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"sync"	
+	"sync"
 
 	pager "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/pager"
 	utils "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/utils"
@@ -96,56 +96,74 @@ func (table *HashTable) ExtendTable() {
 	table.buckets = append(table.buckets, table.buckets...)
 }
 
-
 // Split the given bucket into two, extending the table if necessary.
 func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 	new_bucket, new_bucket_err := NewHashBucket(table.pager, bucket.depth + 1)
 	if new_bucket_err != nil {
+		// could not create new bucket
 		return new_bucket_err
 	}
 	defer new_bucket.page.Put()
+
+	// get old bucket's values
 	entries, entries_err := bucket.Select()
 	if entries_err != nil {
+		// error when getting old bucket's entries
 		return entries_err
 	}
 
+	// deleting all entries in old bucket
 	for _, entry := range entries {
 		del_error := bucket.Delete(entry.GetKey())
 		if del_error != nil {
 			return del_error
 		}
 	}
+
+	// update old bucket's depth by 1
 	bucket.updateDepth(bucket.depth + 1)
 
+	// if local depth < global depth, don't extend the table
 	if bucket.depth <= table.GetDepth() {
+		// setting a bucket index to the new bucket
+
+		// check if leftmost bit is 0 or 1 
 		if hash + powInt(2, (table.GetDepth() - 1)) > powInt(2, table.GetDepth()) - 1 {
 			table.buckets[hash - powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
 		} else {
 			table.buckets[hash + powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
 		}
 
+		// otherwise, redistribute old bucket's values into new table
 		for _, entry := range entries {
 			insert_err := table.Insert(entry.GetKey(), entry.GetValue())
 			if insert_err != nil {
+				// insert failed
 				return insert_err
 			}
 		}
 		return nil
 	}
 
+	// local depth = global depth --> extend table
+	// extends table & increases the table depth by 1
 	table.ExtendTable()
 
+	// assign new slots in table a bucket:
 	for i := powInt(2, (table.GetDepth())) / 2; i < powInt(2, (table.GetDepth())); i++ {
 		if i - powInt(2, (table.GetDepth() - 1)) != hash {
 			table.buckets[i] = table.buckets[i - powInt(2, (table.GetDepth() - 1))]
 		} else {
+			// index that points to new split bucket
 			table.buckets[i] = new_bucket.page.GetPageNum()
 		}
 	}
 
+	// rehash values in bucket that overflowed
 	for _, entry := range entries {
 		insert_err := table.Insert(entry.GetKey(), entry.GetValue())
 		if insert_err != nil {
+			// insert failed
 			return insert_err
 		}
 	}
@@ -154,22 +172,22 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 
 // Inserts the given key-value pair, splits if necessary.
 func (table *HashTable) Insert(key int64, value int64) error {
-	// Hash the key and find which bucket the key should be inserted into
 	hash := Hasher(key, table.GetDepth())
-	bucket, err := table.GetBucket(hash)
-	if err != nil {
-		return err
+	bucket, get_bucket_err := table.GetBucket(hash)
+	if get_bucket_err != nil {
+		return get_bucket_err
 	}
 	defer bucket.page.Put()
-	split, insert_error := bucket.Insert(key, value)
-	if insert_error != nil {
-		return insert_error
+	split, bucket_insert_err := bucket.Insert(key, value)
+
+	if bucket_insert_err != nil {
+		return bucket_insert_err
 	}
-	//  Split if the bucket overflows
+
 	if split {
-		split_error := table.Split(bucket, hash)
-		if split_error != nil {
-			return split_error
+		split_err := table.Split(bucket, hash)
+		if split_err != nil {
+			return split_err
 		}
 	}
 	return nil
@@ -199,22 +217,7 @@ func (table *HashTable) Delete(key int64) error {
 
 // Select all entries in this table.
 func (table *HashTable) Select() ([]utils.Entry, error) {
-	// Create a new array of Entries
-	entries := make([]utils.Entry, 0)
-	// Iterate over every bucket in the table
-	bucket_page_nums := table.GetBuckets()
-	for i := 0; i < len(bucket_page_nums); i++ {
-		current_bucket, get_bucket_error := table.GetBucketByPN(bucket_page_nums[i])
-		if get_bucket_error != nil {
-			return entries, get_bucket_error
-		}
-		// Iterate over every entry in the bucket
-		for j := 0; j < int(current_bucket.numKeys); j++ {
-			entry_to_add := current_bucket.getEntry(int64(j))
-			entries = append(entries, entry_to_add)
-		}
-	}
-	return entries, nil
+	panic("function not yet implemented")
 }
 
 // Print out each bucket.
