@@ -60,22 +60,27 @@ func (node *LeafNode) insert(key int64, value int64, update bool) Split {
 		return Split{err: fmt.Errorf("could not find item to update")}
 
 	// Duplicate key-value pair is found
-	} else if node.getKeyAt(position) == key && node.getValueAt(position) == value {
+	} else if node.getKeyAt(position) == key && !update && position != node.numKeys {
 		return Split{err: fmt.Errorf("duplicate found")}
-	} 
-	// Update numKeys to account for the new element being inserted
-	node.updateNumKeys(node.numKeys + 1)
 	
-	// Shift entries to the right after insertion position
-	for i := position; i < node.numKeys; i++ {
-		current_entry := node.getEntry(i)
-		node.modifyEntry(i + 1, current_entry)
+	}	else if node.getKeyAt(position) != key && update {
+		return Split{err: fmt.Errorf("could not find item to update")}
 	}
+	
 	// Perform the actual insertion
 	if update {
 		node.updateKeyAt(position, key)
 		node.updateValueAt(position, value)
+		return Split{isSplit: false, err: nil}
 	}
+	// Shift entries to the right after insertion position
+	for i := node.numKeys - 1; i >= position; i-- {
+		current_entry := node.getEntry(i)
+		node.modifyEntry(i + 1, current_entry)
+	}
+	node.updateNumKeys(node.numKeys + 1)
+	new_entry := BTreeEntry{key: key, value: value}
+	node.modifyEntry(position, new_entry)
 	// Check if we need to split
 	if node.numKeys > ENTRIES_PER_LEAF_NODE {
 		// key_to_promote := node.getKeyAt(node.search(node.numKeys / 2))
@@ -107,27 +112,27 @@ func (node *LeafNode) delete(key int64) {
 // split is a helper function to split a leaf node, then propagate the split upwards.
 func (node *LeafNode) split() Split {
 	// Create a new leaf node
-	new_leaf_node, _ := createLeafNode(node.page.GetPager())
+	new_leaf_node, leaf_error := createLeafNode(node.page.GetPager())
+	if leaf_error != nil {
+		return Split{err: leaf_error}
+	}
 	defer new_leaf_node.getPage().Put()
-
 	// Find median index and the key at that index
 	split_index := node.numKeys / 2
 	promoted_key := node.getKeyAt(split_index)
 
 	// Transfer entries to the new node
 	var keys_added int64 = 0
-	for i := node.numKeys - 1; i >= split_index; i-- {
+	for i := split_index; i < node.numKeys; i++ {
 		key_at_index := node.getKeyAt(i)
 		value_at_index := node.getValueAt(i)
-		new_leaf_node.insert(key_at_index, value_at_index, false)
-		node.delete(key_at_index)
+		new_leaf_node.updateKeyAt(i - split_index, key_at_index)
+		new_leaf_node.updateValueAt(i - split_index, value_at_index)
 		keys_added = keys_added + 1
 	} 	
 	// Update number of keys for the left child and the right child
 	new_leaf_node.updateNumKeys(keys_added)
 	node.updateNumKeys(node.numKeys - keys_added)
-	// Set new right sibling for split node
-	node.setRightSibling(new_leaf_node.page.GetPageNum())
 	return Split{true, promoted_key, node.page.GetPageNum(), new_leaf_node.page.GetPageNum(), nil}
 }
 
