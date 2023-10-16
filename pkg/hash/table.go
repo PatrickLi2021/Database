@@ -96,76 +96,147 @@ func (table *HashTable) ExtendTable() {
 	table.buckets = append(table.buckets, table.buckets...)
 }
 
+// // Split the given bucket into two, extending the table if necessary.
+// func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
+// 	// If local depth less than global depth, just split bucket
+// 	if bucket.GetDepth() <= table.GetDepth() {
+// 		new_bucket, bucket_error := NewHashBucket(table.GetPager(), bucket.depth + 1)
+// 		if bucket_error != nil {
+// 			return bucket_error
+// 		}
+// 		defer new_bucket.page.Put()
+
+// 		// Examine leftmost bit to see where new page for bucket maps to
+// 		if hash + powInt(2, table.GetDepth() - 1) > powInt(2, table.getDepth()) - 1 {
+// 			table.buckets[hash - powInt(2, table.GetDepth() - 1)] = new_bucket.page.GetPageNum()
+// 		} else {
+// 			table.buckets[hash + powInt(2, table.GetDepth() - 1)] = new_bucket.page.GetPageNum()
+// 		}
+// 		bucket.updateDepth(bucket.depth + 1)
+// 		num_keys_in_overflowed_bucket := bucket.numKeys
+// 		// Reassign entries in overflowed bucket
+// 		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
+// 			current_key := bucket.getKeyAt(int64(i))
+// 			current_value := bucket.getValueAt(int64(i))
+// 			delete_error := bucket.Delete(current_key)
+// 			if delete_error != nil {
+// 				return delete_error
+// 			}
+// 			insert_error := table.Insert(current_key, current_value)
+// 			if insert_error != nil {
+// 				return insert_error
+// 			}
+// 		}
+// 		return nil
+
+// 	// 	If local depth is equal to global depth, double size of table AND split bucket
+// 	} else if bucket.GetDepth() == table.GetDepth() {
+// 		// Extend table, increase local depth of original and new buckets
+// 		prev_global_depth := table.GetDepth()
+// 		table.ExtendTable()
+// 		new_bucket, bucket_error := NewHashBucket(table.GetPager(), bucket.depth + 1)
+// 		if bucket_error != nil {
+// 			return bucket_error
+// 		}
+// 		defer new_bucket.page.Put()
+// 		bucket.updateDepth(bucket.depth + 1)
+
+// 		// Grab only the x rightmost bits of the hash, where x is the old local depth
+// 		bit_mask := (1 << uint(prev_global_depth)) - 1
+// 		for i := len(table.buckets) / 2; i < len(table.buckets); i++ {
+// 			// Maps the slot in the table that corresponds to the hash to the new bucket (using only x rightmost bits)
+// 			if int64(i & bit_mask) == int64(hash & int64(bit_mask)) {
+// 				table.buckets[i] = new_bucket.page.GetPageNum()
+// 			// Anything that didn't cause a split will have 1 more pointer pointing to it now
+// 				} else {
+// 				table.buckets[i] = table.buckets[i & bit_mask]
+// 			}
+// 		}
+// 		num_keys_in_overflowed_bucket := bucket.numKeys
+// 		// Reassign entries in overflowed bucket
+// 		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
+// 			current_key := bucket.getKeyAt(int64(i))
+// 			current_value := bucket.getValueAt(int64(i))
+// 			delete_error := bucket.Delete(current_key)
+// 			if delete_error != nil {
+// 				return delete_error
+// 			}
+// 			insert_error := table.Insert(current_key, current_value)
+// 			if insert_error != nil {
+// 				return insert_error
+// 			}
+// 		}
+// 		return nil
+// 	// Local depth is greater than global depth (which cannot be possible)
+// 	} else {
+// 		return fmt.Errorf("local depth is greater than global depth")
+// 	}
+// }
+
+
 // Split the given bucket into two, extending the table if necessary.
 func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
-	// If local depth less than global depth, just split bucket
-	if bucket.GetDepth() < table.GetDepth() {
-		new_bucket, bucket_error := NewHashBucket(table.GetPager(), bucket.depth + 1)
-		if bucket_error != nil {
-			return bucket_error
-		}
-		defer new_bucket.page.Put()
-		table.buckets[hash + powInt(2, table.GetDepth())] = new_bucket.page.GetPageNum()
-		bucket.updateDepth(bucket.depth + 1)
-		num_keys_in_overflowed_bucket := bucket.numKeys
-		// Reassign entries in overflowed bucket
-		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
-			current_key := bucket.getKeyAt(int64(i))
-			current_value := bucket.getValueAt(int64(i))
-			delete_error := bucket.Delete(current_key)
-			if delete_error != nil {
-				return delete_error
-			}
-			insert_error := table.Insert(current_key, current_value)
-			if insert_error != nil {
-				return insert_error
-			}
-		}
-		return nil
-
-	// 	If local depth is equal to global depth, double size of table AND split bucket
-	} else if bucket.GetDepth() == table.GetDepth() {
-		// Extend table, increase local depth of original and new buckets
-		prev_global_depth := table.GetDepth()
-		table.ExtendTable()
-		new_bucket, bucket_error := NewHashBucket(table.GetPager(), bucket.depth + 1)
-		if bucket_error != nil {
-			return bucket_error
-		}
-		defer new_bucket.page.Put()
-		bucket.updateDepth(bucket.depth + 1)
-
-		// Grab only the x rightmost bits of the hash, where x is the old local depth
-		bit_mask := (1 << uint(prev_global_depth)) - 1
-		for i := len(table.buckets) / 2; i < len(table.buckets); i++ {
-			// Maps the slot in the table that corresponds to the hash to the new bucket (using only x rightmost bits)
-			if int64(i & bit_mask) == int64(hash & int64(bit_mask)) {
-				table.buckets[i] = new_bucket.page.GetPageNum()
-			// Anything that didn't cause a split will have 1 more pointer pointing to it now
-				} else {
-				table.buckets[i] = table.buckets[i & bit_mask]
-			}
-		}
-		num_keys_in_overflowed_bucket := bucket.numKeys
-		// Reassign entries in overflowed bucket
-		for i := int64(0); i < num_keys_in_overflowed_bucket; i++ {
-			current_key := bucket.getKeyAt(int64(i))
-			current_value := bucket.getValueAt(int64(i))
-			delete_error := bucket.Delete(current_key)
-			if delete_error != nil {
-				return delete_error
-			}
-			insert_error := table.Insert(current_key, current_value)
-			if insert_error != nil {
-				return insert_error
-			}
-		}
-		return nil
-	// Local depth is greater than global depth (which cannot be possible)
-	} else {
-		return fmt.Errorf("local depth is greater than global depth")
+	new_bucket, new_bucket_err := NewHashBucket(table.pager, bucket.depth + 1)
+	if new_bucket_err != nil {
+		// could not create new bucket
+		return new_bucket_err
 	}
-}
+	defer new_bucket.page.Put()
+
+	// get old bucket's values
+	entries, entries_err := bucket.Select()
+	if entries_err != nil {
+		// error when getting old bucket's entries
+		return entries_err
+	}
+
+	for _, entry := range entries {
+		del_error := bucket.Delete(entry.GetKey())
+		if del_error != nil {
+			return del_error
+		}
+	}
+
+	// update old bucket's depth by 1
+	bucket.updateDepth(bucket.depth + 1)
+
+	// if local depth < global depth, don't extend the table
+	if bucket.depth <= table.GetDepth() {
+		// setting a bucket index to the new bucket
+
+		// check if leftmost bit is 0 or 1 TO DO 
+		if hash + powInt(2, (table.GetDepth() - 1)) > powInt(2, table.GetDepth()) - 1 {
+			table.buckets[hash - powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
+		} else {
+			table.buckets[hash + powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
+		}
+		// TO DO ^^ rework
+
+		// otherwise, redistribute old bucket's values into new table
+		for _, entry := range entries {
+			re_hash := Hasher(entry.GetKey(), table.GetDepth())
+			re_bucket, re_bucket_err := table.GetBucket(re_hash)
+			if re_bucket_err != nil {
+				return re_bucket_err
+			}
+			defer re_bucket.page.Put()
+			re_bucket.updateNumKeys(re_bucket.numKeys + 1)
+			re_bucket.modifyEntry(re_bucket.numKeys-1, (entry).(HashEntry))
+			// insert_err := table.Insert(entry.GetKey(), entry.GetValue())
+			// if insert_err != nil {
+			// 	// insert failed
+			// 	return insert_err
+			// }
+		}
+		return nil
+	}
+
+
+
+
+
+
+
 
 // Inserts the given key-value pair, splits if necessary.
 func (table *HashTable) Insert(key int64, value int64) error {
