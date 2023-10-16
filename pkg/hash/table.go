@@ -230,6 +230,8 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		}
 		return nil
 	}
+	return nil
+}
 
 
 
