@@ -220,24 +220,20 @@ func (node *InternalNode) insert(key int64, value int64, update bool) Split {
 func (node *InternalNode) insertSplit(split Split) Split {
 	// Search for key position
 	position := node.search(split.key)
-	// Check for duplicates
-	if node.getKeyAt(position) == split.key {
-		return Split{err: errors.New("duplicate key found")}
+	// Shift keys and page numbers to the right
+	node.updatePNAt(node.numKeys + 1, node.getPNAt(node.numKeys))
+	for i := node.numKeys - 1; i >= position; i-- {
+		current_key := node.getKeyAt(i)
+		node.updateKeyAt(i + 1, current_key)
+		node.updatePNAt(i + 1, node.getPNAt(i))
 	}
 	node.updateNumKeys(node.numKeys + 1)
-	// Shift keys and page numbers to the right
-	for i := position; i < position + (node.numKeys - position); i++ {
-		current_key := node.getKeyAt(position)
-		node.updateKeyAt(position + 1, current_key)
-		node.updatePNAt(position, node.getPage().GetPageNum())
-	}
 	// Update key and page number at position
 	node.updateKeyAt(position, split.key)
-	node.updatePNAt(position, node.page.GetPageNum())
+
 	if node.numKeys > KEYS_PER_INTERNAL_NODE {
-		key_to_promote := node.getKeyAt(position)
 		new_split := node.split()
-		return Split{isSplit: true, key: key_to_promote, leftPN: new_split.leftPN, rightPN: new_split.rightPN}
+		return new_split
 	} else {
 		return Split{isSplit: false}
 	}
@@ -259,19 +255,22 @@ func (node *InternalNode) delete(key int64) {
 // split is a helper function that splits an internal node, then propagates the split upwards.
 func (node *InternalNode) split() Split {
 	// Create a new internal node
-	new_internal_node, _ := createInternalNode(node.page.GetPager())
+	new_internal_node, internal_node_error := createInternalNode(node.page.GetPager())
+	if internal_node_error != nil {
+		return Split{err: internal_node_error}
+	}
 	defer new_internal_node.getPage().Put()
 	// Compute the midpoint and transfer the keys to the new node
-	midpoint_position := node.numKeys / 2
-	for i := midpoint_position + 1; i < node.numKeys; i++ {
-		current_key := node.getKeyAt(i)
-		current_value, found := node.get(current_key)
-		if found {
-			new_internal_node.insert(current_key, current_value, false)
-		}
+	midpoint_position := (node.numKeys - 1) / 2
+	for i := midpoint_position; i < node.numKeys; i++ {
+		new_internal_node.updateKeyAt(new_internal_node.numKeys, node.getKeyAt(i))
+		new_internal_node.updatePNAt(new_internal_node.numKeys, node.getPNAt(i))
+		new_internal_node.updateNumKeys(new_internal_node.numKeys + 1)
 	}
+	new_internal_node.updatePNAt(new_internal_node.numKeys, node.getPNAt(node.numKeys))
+	node.updateNumKeys(midpoint_position - 1)
 	// Return a split (what is the split.key in here?)
-	return Split{true, node.getKeyAt(midpoint_position), node.page.GetPageNum(), new_internal_node.page.GetPageNum(), nil}
+	return Split{true, node.getKeyAt(midpoint_position - 1), node.page.GetPageNum(), new_internal_node.page.GetPageNum(), nil}
 }
 
 // get returns the value associated with a given key from the leaf node.
