@@ -108,6 +108,7 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 	if entries_err != nil {
 		return entries_err
 	}
+
 	for _, entry := range entries {
 		del_error := bucket.Delete(entry.GetKey())
 		if del_error != nil {
@@ -115,26 +116,25 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		}
 	}
 	bucket.updateDepth(bucket.depth + 1)
+
 	if bucket.depth <= table.GetDepth() {
-		if hash + powInt(2, (table.GetDepth() - 1)) <= powInt(2, table.GetDepth()) - 1 {
-			table.buckets[hash + powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
-		} else {
+		if hash + powInt(2, (table.GetDepth() - 1)) > powInt(2, table.GetDepth()) - 1 {
 			table.buckets[hash - powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
+		} else {
+			table.buckets[hash + powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
 		}
 
 		for _, entry := range entries {
-			re_hash := Hasher(entry.GetKey(), table.GetDepth())
-			re_bucket, re_bucket_err := table.GetBucket(re_hash)
-			if re_bucket_err != nil {
-				return re_bucket_err
+			insert_err := table.Insert(entry.GetKey(), entry.GetValue())
+			if insert_err != nil {
+				return insert_err
 			}
-			defer re_bucket.page.Put()
-			re_bucket.updateNumKeys(re_bucket.numKeys + 1)
-			re_bucket.modifyEntry(re_bucket.numKeys-1, (entry).(HashEntry))
 		}
 		return nil
 	}
+
 	table.ExtendTable()
+
 	for i := powInt(2, (table.GetDepth())) / 2; i < powInt(2, (table.GetDepth())); i++ {
 		if i - powInt(2, (table.GetDepth() - 1)) != hash {
 			table.buckets[i] = table.buckets[i - powInt(2, (table.GetDepth() - 1))]
@@ -142,15 +142,12 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 			table.buckets[i] = new_bucket.page.GetPageNum()
 		}
 	}
+
 	for _, entry := range entries {
-		re_hash := Hasher(entry.GetKey(), table.GetDepth())
-			re_bucket, re_bucket_err := table.GetBucket(re_hash)
-			if re_bucket_err != nil {
-				return re_bucket_err
-			}
-			defer re_bucket.page.Put()
-			re_bucket.updateNumKeys(re_bucket.numKeys + 1)
-			re_bucket.modifyEntry(re_bucket.numKeys-1, (entry).(HashEntry))
+		insert_err := table.Insert(entry.GetKey(), entry.GetValue())
+		if insert_err != nil {
+			return insert_err
+		}
 	}
 	return nil
 }
