@@ -177,16 +177,13 @@ func (table *HashTable) Insert(key int64, value int64) error {
 	if err != nil {
 		return err
 	}
+	defer bucket.page.Put()
 	split, insert_error := bucket.Insert(key, value)
 	if insert_error != nil {
 		return insert_error
 	}
 	//  Split if the bucket overflows
 	if split {
-		fmt.Println("split occurring!!!!!!!!!")
-		fmt.Println(bucket.depth)
-		fmt.Println(table.depth)
-		fmt.Println(hash)
 		split_error := table.Split(bucket, hash)
 		if split_error != nil {
 			return split_error

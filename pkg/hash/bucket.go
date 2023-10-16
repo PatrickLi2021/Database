@@ -53,8 +53,8 @@ func (bucket *HashBucket) Insert(key int64, value int64) (bool, error) {
 	// Perform insertion
 	index_to_insert := bucket.numKeys
 	new_entry := HashEntry{key: key, value: value}
-	bucket.updateNumKeys(bucket.numKeys + 1)
 	bucket.modifyEntry(index_to_insert, new_entry)
+	bucket.updateNumKeys(bucket.numKeys + 1)
 	// Check if split needs to occur
 	if bucket.numKeys > BUCKETSIZE {
 		return true, nil
