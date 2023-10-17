@@ -18,8 +18,7 @@ var NUM_KEYS_OFFSET int64 = DEPTH_OFFSET + DEPTH_SIZE
 var NUM_KEYS_SIZE int64 = binary.MaxVarintLen64
 var BUCKET_HEADER_SIZE int64 = DEPTH_SIZE + NUM_KEYS_SIZE
 var ENTRYSIZE int64 = binary.MaxVarintLen64 * 2                    // int64 key, int64 value
-// var BUCKETSIZE int64 = (PAGESIZE-BUCKET_HEADER_SIZE)/ENTRYSIZE - 1 // num entries
-var BUCKETSIZE int64 = 8
+var BUCKETSIZE int64 = (PAGESIZE-BUCKET_HEADER_SIZE)/ENTRYSIZE - 1 // num entries
 
 // Lock Types
 type BucketLockType int
@@ -53,7 +52,7 @@ func MurmurHasher(key int64, size int64) uint {
 
 // Hasher returns the hash of a key, modded by 2^depth.
 func Hasher(key int64, depth int64) int64 {
-	return int64(key %powInt(2, depth))
+	return int64(XxHasher(key, powInt(2, depth)))
 }
 
 // Get the byte-position of the cell with the given index.

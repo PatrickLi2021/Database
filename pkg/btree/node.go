@@ -71,8 +71,10 @@ func (node *LeafNode) insert(key int64, value int64, update bool) Split {
 	} 
 
 	for i := node.numKeys - 1; i >= position; i-- {
-		node.updateKeyAt(i + 1, node.getKeyAt(i))
-		node.updateValueAt(i + 1, node.getValueAt(i))
+		current_key := node.getKeyAt(i)
+		current_value := node.getValueAt(i)
+		new_entry := BTreeEntry{key: current_key, value: current_value}
+		node.modifyEntry(i + 1, new_entry)
 	} 
 	node.updateNumKeys(node.numKeys + 1)
 	new_entry := BTreeEntry{key: key, value: value}
@@ -112,8 +114,10 @@ func (node *LeafNode) split() Split {
 	midpoint_position := node.numKeys / 2 
 
 	for i := midpoint_position; i < node.numKeys; i++ {
-		new_leaf_node.updateKeyAt(new_leaf_node.numKeys, node.getKeyAt(i))
-		new_leaf_node.updateValueAt(new_leaf_node.numKeys, node.getValueAt(i))
+		current_key := node.getKeyAt(i)
+		current_value := node.getValueAt(i)
+		new_entry := BTreeEntry{key: current_key, value: current_value}
+		new_leaf_node.modifyEntry(new_leaf_node.numKeys, new_entry)
 		new_leaf_node.updateNumKeys(new_leaf_node.numKeys + 1)
 	}
 	node.updateNumKeys(midpoint_position)
@@ -209,6 +213,7 @@ func (node *InternalNode) insertSplit(split Split) Split {
 	for i := node.numKeys - 1; i > split_pos ; i--  { 
 		node.updatePNAt(i + 1, node.getPNAt(i))
 	}
+	// off by one error fix
 	node.updatePNAt(split_pos + 1, split.rightPN)
 	if node.numKeys > KEYS_PER_INTERNAL_NODE {
 		return node.split()

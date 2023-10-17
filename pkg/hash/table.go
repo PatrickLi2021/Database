@@ -98,76 +98,61 @@ func (table *HashTable) ExtendTable() {
 
 // Split the given bucket into two, extending the table if necessary.
 func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
-	new_bucket, new_bucket_err := NewHashBucket(table.pager, bucket.depth + 1)
-	if new_bucket_err != nil {
-		// could not create new bucket
-		return new_bucket_err
+	new_bucket, err := NewHashBucket(table.pager, bucket.depth + 1)
+	if err != nil {
+		return err
 	}
 	defer new_bucket.page.Put()
 
-	// get old bucket's values
-	entries, entries_err := bucket.Select()
-	if entries_err != nil {
-		// error when getting old bucket's entries
-		return entries_err
+	entries, entry_err := bucket.Select()
+	if entry_err != nil {
+		return entry_err
 	}
 
 	// deleting all entries in old bucket
 	for _, entry := range entries {
-		del_error := bucket.Delete(entry.GetKey())
-		if del_error != nil {
-			return del_error
+		deletion_error := bucket.Delete(entry.GetKey())
+		if deletion_error != nil {
+			return deletion_error
 		}
 	}
-
-	// update old bucket's depth by 1
 	bucket.updateDepth(bucket.depth + 1)
 
-	// if local depth < global depth, don't extend the table
 	if bucket.depth <= table.GetDepth() {
-		// setting a bucket index to the new bucket
-
-		// check if leftmost bit is 0 or 1 
-		if hash + powInt(2, (table.GetDepth() - 1)) > powInt(2, table.GetDepth()) - 1 {
-			table.buckets[hash - powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
-		} else {
+		// Reassign pointers
+		if hash + powInt(2, (table.GetDepth() - 1)) <= powInt(2, table.GetDepth()) - 1 {
 			table.buckets[hash + powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
+		} else {
+			table.buckets[hash - powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
 		}
 
-		// otherwise, redistribute old bucket's values into new table
 		for _, entry := range entries {
 			insert_err := table.Insert(entry.GetKey(), entry.GetValue())
 			if insert_err != nil {
-				// insert failed
+				return insert_err
+			}
+		}
+		return nil
+	} else {
+		table.ExtendTable()
+
+		// assign new slots in table a bucket:
+		for i := powInt(2, (table.GetDepth())) / 2; i < powInt(2, (table.GetDepth())); i++ {
+			if i - powInt(2, (table.GetDepth() - 1)) != hash {
+				table.buckets[i] = table.buckets[i - powInt(2, (table.GetDepth() - 1))]
+			} else {
+				// index that points to new split bucket
+				table.buckets[i] = new_bucket.page.GetPageNum()
+			}
+		}
+		for _, entry := range entries {
+			insert_err := table.Insert(entry.GetKey(), entry.GetValue())
+			if insert_err != nil {
 				return insert_err
 			}
 		}
 		return nil
 	}
-
-	// local depth = global depth --> extend table
-	// extends table & increases the table depth by 1
-	table.ExtendTable()
-
-	// assign new slots in table a bucket:
-	for i := powInt(2, (table.GetDepth())) / 2; i < powInt(2, (table.GetDepth())); i++ {
-		if i - powInt(2, (table.GetDepth() - 1)) != hash {
-			table.buckets[i] = table.buckets[i - powInt(2, (table.GetDepth() - 1))]
-		} else {
-			// index that points to new split bucket
-			table.buckets[i] = new_bucket.page.GetPageNum()
-		}
-	}
-
-	// rehash values in bucket that overflowed
-	for _, entry := range entries {
-		insert_err := table.Insert(entry.GetKey(), entry.GetValue())
-		if insert_err != nil {
-			// insert failed
-			return insert_err
-		}
-	}
-	return nil
 }
 
 // Inserts the given key-value pair, splits if necessary.
@@ -183,7 +168,6 @@ func (table *HashTable) Insert(key int64, value int64) error {
 	if bucket_insert_err != nil {
 		return bucket_insert_err
 	}
-
 	if split {
 		split_err := table.Split(bucket, hash)
 		if split_err != nil {
