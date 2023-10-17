@@ -103,13 +103,10 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		return err
 	}
 	defer new_bucket.page.Put()
-
 	entries, entry_err := bucket.Select()
 	if entry_err != nil {
 		return entry_err
 	}
-
-	// deleting all entries in old bucket
 	for _, entry := range entries {
 		deletion_error := bucket.Delete(entry.GetKey())
 		if deletion_error != nil {
@@ -117,7 +114,6 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		}
 	}
 	bucket.updateDepth(bucket.depth + 1)
-
 	if bucket.depth <= table.GetDepth() {
 		// Reassign pointers
 		if hash + powInt(2, (table.GetDepth() - 1)) <= powInt(2, table.GetDepth()) - 1 {
@@ -127,28 +123,27 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		}
 
 		for _, entry := range entries {
-			insert_err := table.Insert(entry.GetKey(), entry.GetValue())
-			if insert_err != nil {
-				return insert_err
+			insertion_error := table.Insert(entry.GetKey(), entry.GetValue())
+			if insertion_error != nil {
+				return insertion_error
 			}
 		}
 		return nil
-	} else {
-		table.ExtendTable()
 
-		// assign new slots in table a bucket:
+	} else {
+		prev_table_depth := table.GetDepth() - 1
+		table.ExtendTable()
 		for i := powInt(2, (table.GetDepth())) / 2; i < powInt(2, (table.GetDepth())); i++ {
-			if i - powInt(2, (table.GetDepth() - 1)) != hash {
-				table.buckets[i] = table.buckets[i - powInt(2, (table.GetDepth() - 1))]
+			if hash != i - powInt(2, prev_table_depth) {
+				table.buckets[i] = table.buckets[i - powInt(2, prev_table_depth)]
 			} else {
-				// index that points to new split bucket
 				table.buckets[i] = new_bucket.page.GetPageNum()
 			}
 		}
 		for _, entry := range entries {
-			insert_err := table.Insert(entry.GetKey(), entry.GetValue())
-			if insert_err != nil {
-				return insert_err
+			insertion_err := table.Insert(entry.GetKey(), entry.GetValue())
+			if insertion_err != nil {
+				return insertion_err
 			}
 		}
 		return nil
@@ -158,17 +153,17 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 // Inserts the given key-value pair, splits if necessary.
 func (table *HashTable) Insert(key int64, value int64) error {
 	hash := Hasher(key, table.GetDepth())
-	bucket, get_bucket_err := table.GetBucket(hash)
-	if get_bucket_err != nil {
-		return get_bucket_err
+	bucket, get_bucket_function_error := table.GetBucket(hash)
+	if get_bucket_function_error != nil {
+		return get_bucket_function_error
 	}
 	defer bucket.page.Put()
-	split, bucket_insert_err := bucket.Insert(key, value)
+	bucket_split, bucket_insertion_error := bucket.Insert(key, value)
 
-	if bucket_insert_err != nil {
-		return bucket_insert_err
+	if bucket_insertion_error != nil {
+		return bucket_insertion_error
 	}
-	if split {
+	if bucket_split {
 		split_err := table.Split(bucket, hash)
 		if split_err != nil {
 			return split_err
