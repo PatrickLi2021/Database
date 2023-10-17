@@ -114,7 +114,7 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		}
 	}
 	bucket.updateDepth(bucket.depth + 1)
-	if bucket.depth <= table.GetDepth() {
+	if bucket.depth < table.GetDepth() {
 		// Reassign pointers
 		if hash + powInt(2, (table.GetDepth() - 1)) <= powInt(2, table.GetDepth()) - 1 {
 			table.buckets[hash + powInt(2, (table.GetDepth() - 1))] = new_bucket.page.GetPageNum()
@@ -131,7 +131,7 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 		return nil
 
 	} else {
-		prev_table_depth := table.GetDepth() - 1
+		prev_table_depth := table.GetDepth()
 		table.ExtendTable()
 		for i := powInt(2, (table.GetDepth())) / 2; i < powInt(2, (table.GetDepth())); i++ {
 			if hash != i - powInt(2, prev_table_depth) {
