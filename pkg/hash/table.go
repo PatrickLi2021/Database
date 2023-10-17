@@ -154,15 +154,18 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 func (table *HashTable) Insert(key int64, value int64) error {
 	hash := Hasher(key, table.GetDepth())
 	bucket, get_bucket_function_error := table.GetBucket(hash)
+	
 	if get_bucket_function_error != nil {
 		return get_bucket_function_error
 	}
+
 	defer bucket.page.Put()
 	bucket_split, bucket_insertion_error := bucket.Insert(key, value)
 
 	if bucket_insertion_error != nil {
 		return bucket_insertion_error
 	}
+
 	if bucket_split {
 		split_err := table.Split(bucket, hash)
 		if split_err != nil {
