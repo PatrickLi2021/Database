@@ -117,12 +117,15 @@ func probeBuckets(
 		bloom_filter.Insert(current_key)
 	}
 
-	for i := 0; i < len(right_bucket_entries); i++ {
-		for j := 0; j < len(left_bucket_entries); j++ {
+	for j := 0; j < len(left_bucket_entries); j++ {
+		if !bloom_filter.Contains(left_bucket_entries[j].GetKey()) {
+			continue
+			
+		} else {
+			for i := 0; j < len(right_bucket_entries); j++ {
 			current_left_key := left_bucket_entries[j].GetKey()
 			current_right_key := right_bucket_entries[i].GetKey()
 			
-			if bloom_filter.Contains(current_left_key) {
 					current_left_value := left_bucket_entries[j].GetValue()
 					current_right_value := right_bucket_entries[i].GetValue()
 					// Set the left and right entries upon finding a match
@@ -158,9 +161,6 @@ func probeBuckets(
 						left_entry.SetValue(current_left_value)
 					}
 					sendResult(ctx, resultsChan, EntryPair{l: left_entry, r: right_entry})
-					
-			} else {
-				continue
 			}
 		}
 	}
