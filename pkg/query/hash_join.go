@@ -47,7 +47,7 @@ func buildHashIndex(
 		return nil, dbName, cursor_error
 	}
 	// Loop over all entries using cursor
-	for !cursor.IsEnd() {
+	for cursor.StepForward() {
 		// Get entry
 		current_entry, get_entry_error := cursor.GetEntry()
 		if get_entry_error != nil {
