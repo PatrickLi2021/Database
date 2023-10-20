@@ -14,7 +14,7 @@ type BloomFilter struct {
 // CreateFilter initializes a BloomFilter with the given size.
 func CreateFilter(size int64) *BloomFilter {
 	bits := bitset.New(uint(size))
-	return &BloomFilter{size: DEFAULT_FILTER_SIZE, bits: bits}
+	return &BloomFilter{size: size, bits: bits}
 }
 
 // Insert adds an element into the bloom filter.
