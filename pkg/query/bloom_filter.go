@@ -21,8 +21,12 @@ func CreateFilter(size int64) *BloomFilter {
 func (filter *BloomFilter) Insert(key int64) {
 	xxxHashResult := hash.XxHasher(key, filter.size)
 	murmurhashResult := hash.MurmurHasher(key, filter.size)
-	filter.bits.Set(xxxHashResult)
-	filter.bits.Set(murmurhashResult)
+	if filter.bits.Test(xxxHashResult) {
+		filter.bits.Set(xxxHashResult)
+	}
+	if filter.bits.Test(murmurhashResult) {
+		filter.bits.Set(murmurhashResult)
+	}
 }
 
 // Contains checks if the given key can be found in the bloom filter/
