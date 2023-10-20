@@ -120,48 +120,51 @@ func probeBuckets(
 	for j := 0; j < len(left_bucket_entries); j++ {
 		if !bloom_filter.Contains(left_bucket_entries[j].GetKey()) {
 			continue
-			
-		} else {
-			for i := 0; j < len(right_bucket_entries); j++ {
-			current_left_key := left_bucket_entries[j].GetKey()
-			current_right_key := right_bucket_entries[i].GetKey()
-			
-					current_left_value := left_bucket_entries[j].GetValue()
-					current_right_value := right_bucket_entries[i].GetValue()
-					// Set the left and right entries upon finding a match
-					left_entry := hash.HashEntry{}
-					right_entry := hash.HashEntry{}
 
-					// Swap both left and right entries
-					if !joinOnLeftKey && !joinOnRightKey {
-						right_entry.SetKey(current_right_value)
-						right_entry.SetValue(current_right_key)
-						left_entry.SetKey(current_left_value)
-						left_entry.SetValue(current_left_key)
-					
-					// Swap only the left entry
-					} else if !joinOnLeftKey && joinOnRightKey {
-						left_entry.SetKey(current_left_value)
-						left_entry.SetValue(current_left_key)
-						right_entry.SetKey(current_right_key)
-						right_entry.SetValue(current_right_value)
-					
-					// Swap only the right entry
-					} else if joinOnLeftKey && !joinOnRightKey {
-						right_entry.SetKey(current_right_value)
-						right_entry.SetValue(current_right_key)
-						left_entry.SetKey(current_left_key)
-						left_entry.SetValue(current_left_value)
-					
-					// Swap neither entry
-					} else {
-						right_entry.SetKey(current_right_key)
-						right_entry.SetValue(current_right_value)
-						left_entry.SetKey(current_left_key)
-						left_entry.SetValue(current_left_value)
-					}
-					sendResult(ctx, resultsChan, EntryPair{l: left_entry, r: right_entry})
+		} else {
+			for i := 0; i < len(right_bucket_entries); i++ {
+
+				current_left_key := left_bucket_entries[j].GetKey()
+				current_right_key := right_bucket_entries[i].GetKey()
+				
+				if (current_left_key == current_left_key) {
+						current_left_value := left_bucket_entries[j].GetValue()
+						current_right_value := right_bucket_entries[i].GetValue()
+						// Set the left and right entries upon finding a match
+						left_entry := hash.HashEntry{}
+						right_entry := hash.HashEntry{}
+
+						// Swap both left and right entries
+						if !joinOnLeftKey && !joinOnRightKey {
+							right_entry.SetKey(current_right_value)
+							right_entry.SetValue(current_right_key)
+							left_entry.SetKey(current_left_value)
+							left_entry.SetValue(current_left_key)
+						
+						// Swap only the left entry
+						} else if !joinOnLeftKey && joinOnRightKey {
+							left_entry.SetKey(current_left_value)
+							left_entry.SetValue(current_left_key)
+							right_entry.SetKey(current_right_key)
+							right_entry.SetValue(current_right_value)
+						
+						// Swap only the right entry
+						} else if joinOnLeftKey && !joinOnRightKey {
+							right_entry.SetKey(current_right_value)
+							right_entry.SetValue(current_right_key)
+							left_entry.SetKey(current_left_key)
+							left_entry.SetValue(current_left_value)
+						
+						// Swap neither entry
+						} else {
+							right_entry.SetKey(current_right_key)
+							right_entry.SetValue(current_right_value)
+							left_entry.SetKey(current_left_key)
+							left_entry.SetValue(current_left_value)
+						}
+						sendResult(ctx, resultsChan, EntryPair{l: left_entry, r: right_entry})
 			}
+		}
 		}
 	}
 	return nil
