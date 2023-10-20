@@ -21,10 +21,10 @@ func CreateFilter(size int64) *BloomFilter {
 func (filter *BloomFilter) Insert(key int64) {
 	xxxHashResult := hash.XxHasher(key, filter.size)
 	murmurhashResult := hash.MurmurHasher(key, filter.size)
-	if filter.bits.Test(xxxHashResult) {
+	if !filter.bits.Test(xxxHashResult) {
 		filter.bits.Set(xxxHashResult)
 	}
-	if filter.bits.Test(murmurhashResult) {
+	if !filter.bits.Test(murmurhashResult) {
 		filter.bits.Set(murmurhashResult)
 	}
 }
