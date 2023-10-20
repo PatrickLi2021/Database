@@ -28,20 +28,43 @@ type pair struct {
 // buildHashIndex constructs a temporary hash table for all the entries in the given sourceTable.
 func buildHashIndex(
 	sourceTable db.Index,
-	useKey bool,
+	useKey bool, // hashing based on the key or the value, determines whether you want to swap key and value
 ) (tempIndex *hash.HashIndex, dbName string, err error) {
 	// Get a temporary db file.
 	dbName, err = db.GetTempDB()
 	if err != nil {
-		return nil, "", err
+		return nil, dbName, err
 	}
 	// Init the temporary hash table.
 	tempIndex, err = hash.OpenTable(dbName)
 	if err != nil {
-		return nil, "", err
+		return nil, dbName, err
 	}
-	// Build the hash index.
-	panic("function not yet implemented")
+	// Build the hash index by initializing a cursor (you can go without a cursor and just grab all entries of the table,
+	// but you would have to assume all entries fit in main memory, which works in this case)
+	cursor, cursor_error := sourceTable.TableStart()
+	if cursor_error != nil {
+		return nil, dbName, cursor_error
+	}
+	// Loop over all entries using cursor
+	for !cursor.IsEnd() {
+		// Get entry
+		current_entry, get_entry_error := cursor.GetEntry()
+		if get_entry_error != nil {
+			return nil, dbName, get_entry_error
+		}
+		// Extract key and value from entry
+		current_key := current_entry.GetKey()
+		current_value := current_entry.GetValue()
+		if useKey {
+			// Use table key as actual hash table key
+			tempIndex.Insert(current_key, current_value)		
+		} else {
+		 	// Use table value as actual hash table key
+			tempIndex.Insert(current_value, current_key)
+		}
+	}
+	return tempIndex, dbName, nil
 }
 
 // sendResult attempts to send a single join result to the resultsChan channel as long as the errgroup hasn't been cancelled.
@@ -62,6 +85,7 @@ func sendResult(
 func probeBuckets(
 	ctx context.Context,
 	resultsChan chan EntryPair,
+	// These above 2 arguments are just passed directly into sendResult
 	lBucket *hash.HashBucket,
 	rBucket *hash.HashBucket,
 	joinOnLeftKey bool,
@@ -69,8 +93,60 @@ func probeBuckets(
 ) error {
 	defer lBucket.GetPage().Put()
 	defer rBucket.GetPage().Put()
-	// Probe buckets.
-	panic("function not yet implemented")
+	// Scan inner relation and use hash function to see
+	right_bucket_entries, select_err := rBucket.Select()
+	if select_err != nil {
+		return select_err
+	}
+	left_bucket_entries, select_err := lBucket.Select()
+	if select_err != nil {
+		return select_err
+	}
+	for i := 0; i < len(right_bucket_entries); i++ {
+		for j := 0; j < len(left_bucket_entries); j++ {
+			current_left_key := left_bucket_entries[i].GetKey()
+			current_right_key := right_bucket_entries[j].GetKey()
+			// Check if there's a match between keys
+			if current_left_key == current_right_key {
+				current_left_value := left_bucket_entries[i].GetValue()
+				current_right_value := right_bucket_entries[i].GetValue()
+				// Set the left and right entries upon finding a match
+				left_entry := hash.HashEntry{}
+				right_entry := hash.HashEntry{}
+
+				// Swap both left and right entries
+				if !joinOnLeftKey && !joinOnRightKey {
+					right_entry.SetKey(current_right_value)
+					right_entry.SetValue(current_right_key)
+					left_entry.SetKey(current_left_value)
+					left_entry.SetValue(current_left_key)
+				
+				// Swap only the left entry
+				} else if !joinOnLeftKey && joinOnRightKey {
+					left_entry.SetKey(current_left_value)
+					left_entry.SetValue(current_left_key)
+					right_entry.SetKey(current_right_key)
+					right_entry.SetValue(current_right_value)
+				
+				// Swap only the right entry
+				} else if joinOnLeftKey && !joinOnRightKey {
+					right_entry.SetKey(current_right_value)
+					right_entry.SetValue(current_right_key)
+					left_entry.SetKey(current_left_key)
+					left_entry.SetValue(current_left_value)
+				
+				// Swap netiher entry
+				} else {
+					right_entry.SetKey(current_right_key)
+					right_entry.SetValue(current_right_value)
+					left_entry.SetKey(current_left_key)
+					left_entry.SetValue(current_left_value)
+				}
+				sendResult(ctx, resultsChan, EntryPair{l: left_entry, r: right_entry})
+			}
+		}
+	}
+	return nil
 }
 
 // Join leftTable on rightTable using Grace Hash Join.
@@ -82,10 +158,12 @@ func Join(
 	joinOnRightKey bool,
 ) (chan EntryPair, context.Context, *errgroup.Group, func(), error) {
 	leftHashIndex, leftDbName, err := buildHashIndex(leftTable, joinOnLeftKey)
+	// join on left key tells us if the left bucket's useKey is true or not
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 	rightHashIndex, rightDbName, err := buildHashIndex(rightTable, joinOnRightKey)
+	// join on right key tells us if the right bucket's useKey is true or not
 	if err != nil {
 		os.Remove(leftDbName)
 		os.Remove(leftDbName + ".meta")
