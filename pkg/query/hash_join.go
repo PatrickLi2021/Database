@@ -110,47 +110,57 @@ func probeBuckets(
 	if select_err != nil {
 		return select_err
 	}
+	// Create and populate bloom filter
+	bloom_filter := CreateFilter(DEFAULT_FILTER_SIZE)
+	for i := 0; i < len(right_bucket_entries); i++ {
+		current_key := right_bucket_entries[i].GetKey()
+		bloom_filter.Insert(current_key)
+	}
+
 	for i := 0; i < len(right_bucket_entries); i++ {
 		for j := 0; j < len(left_bucket_entries); j++ {
 			current_left_key := left_bucket_entries[j].GetKey()
 			current_right_key := right_bucket_entries[i].GetKey()
-			// Check if there's a match between keys
-			if current_left_key == current_right_key {
-				current_left_value := left_bucket_entries[j].GetValue()
-				current_right_value := right_bucket_entries[i].GetValue()
-				// Set the left and right entries upon finding a match
-				left_entry := hash.HashEntry{}
-				right_entry := hash.HashEntry{}
+			
+			if bloom_filter.Contains(current_left_key) {
+					current_left_value := left_bucket_entries[j].GetValue()
+					current_right_value := right_bucket_entries[i].GetValue()
+					// Set the left and right entries upon finding a match
+					left_entry := hash.HashEntry{}
+					right_entry := hash.HashEntry{}
 
-				// Swap both left and right entries
-				if !joinOnLeftKey && !joinOnRightKey {
-					right_entry.SetKey(current_right_value)
-					right_entry.SetValue(current_right_key)
-					left_entry.SetKey(current_left_value)
-					left_entry.SetValue(current_left_key)
-				
-				// Swap only the left entry
-				} else if !joinOnLeftKey && joinOnRightKey {
-					left_entry.SetKey(current_left_value)
-					left_entry.SetValue(current_left_key)
-					right_entry.SetKey(current_right_key)
-					right_entry.SetValue(current_right_value)
-				
-				// Swap only the right entry
-				} else if joinOnLeftKey && !joinOnRightKey {
-					right_entry.SetKey(current_right_value)
-					right_entry.SetValue(current_right_key)
-					left_entry.SetKey(current_left_key)
-					left_entry.SetValue(current_left_value)
-				
-				// Swap netiher entry
-				} else {
-					right_entry.SetKey(current_right_key)
-					right_entry.SetValue(current_right_value)
-					left_entry.SetKey(current_left_key)
-					left_entry.SetValue(current_left_value)
-				}
-				sendResult(ctx, resultsChan, EntryPair{l: left_entry, r: right_entry})
+					// Swap both left and right entries
+					if !joinOnLeftKey && !joinOnRightKey {
+						right_entry.SetKey(current_right_value)
+						right_entry.SetValue(current_right_key)
+						left_entry.SetKey(current_left_value)
+						left_entry.SetValue(current_left_key)
+					
+					// Swap only the left entry
+					} else if !joinOnLeftKey && joinOnRightKey {
+						left_entry.SetKey(current_left_value)
+						left_entry.SetValue(current_left_key)
+						right_entry.SetKey(current_right_key)
+						right_entry.SetValue(current_right_value)
+					
+					// Swap only the right entry
+					} else if joinOnLeftKey && !joinOnRightKey {
+						right_entry.SetKey(current_right_value)
+						right_entry.SetValue(current_right_key)
+						left_entry.SetKey(current_left_key)
+						left_entry.SetValue(current_left_value)
+					
+					// Swap neither entry
+					} else {
+						right_entry.SetKey(current_right_key)
+						right_entry.SetValue(current_right_value)
+						left_entry.SetKey(current_left_key)
+						left_entry.SetValue(current_left_value)
+					}
+					sendResult(ctx, resultsChan, EntryPair{l: left_entry, r: right_entry})
+					
+			} else {
+				continue
 			}
 		}
 	}
