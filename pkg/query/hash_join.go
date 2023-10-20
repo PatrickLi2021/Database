@@ -49,25 +49,24 @@ func buildHashIndex(
 	}
 	// Loop over all entries using cursor
 	for {
-		if cursor.IsEnd() {
-			continue
-		}
-		// Get entry
-		current_entry, get_entry_error := cursor.GetEntry()
-		if get_entry_error != nil {
-			return nil, dbName, get_entry_error
-		}
-		// Extract key and value from entry
-		current_key := current_entry.GetKey()
-		current_value := current_entry.GetValue()
-		fmt.Print(current_key)
-		fmt.Print(current_value)
-		if useKey {
-			// Use table key as actual hash table key
-			tempIndex.Insert(current_key, current_value)		
-		} else {
-		 	// Use table value as actual hash table key
-			tempIndex.Insert(current_value, current_key)
+		if !cursor.IsEnd() {
+			// Get entry
+			current_entry, get_entry_error := cursor.GetEntry()
+			if get_entry_error != nil {
+				return nil, dbName, get_entry_error
+			}
+			// Extract key and value from entry
+			current_key := current_entry.GetKey()
+			current_value := current_entry.GetValue()
+			fmt.Print(current_key)
+			fmt.Print(current_value)
+			if useKey {
+				// Use table key as actual hash table key
+				tempIndex.Insert(current_key, current_value)		
+			} else {
+				// Use table value as actual hash table key
+				tempIndex.Insert(current_value, current_key)
+			}	
 		}
 		if cursor.StepForward() {
 			break
