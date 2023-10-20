@@ -24,44 +24,39 @@ func (table *HashIndex) TableStart() (utils.Cursor, error) {
 	defer curPage.Put()
 	cursor.curBucket = pageToBucket(curPage)
 	cursor.isEnd = (cursor.curBucket.numKeys == 0)
-	if cursor.isEnd {
-		cursor.isEnd = cursor.StepForward()
-	}
 	return &cursor, nil
 }
 
-// StepForward moves the cursor ahead by one entry. Returns true at the end of the table.
-func (cursor *HashCursor) StepForward() (atEnd bool) {
+// StepForward moves the cursor ahead by one entry.
+func (cursor *HashCursor) StepForward() bool {
 	// If the cursor is at the end of the bucket, try visiting the next bucket.
-	if cursor.cellnum+1 >= cursor.curBucket.numKeys {
+	if cursor.isEnd {
 		// Get the next page number.
 		nextPN := cursor.curBucket.page.GetPageNum() + 1
 		if nextPN >= cursor.curBucket.page.GetPager().GetNumPages() {
-			cursor.isEnd = true
 			return true
 		}
 		// Convert the page to a bucket.
 		nextPage, err := cursor.table.pager.GetPage(nextPN)
 		if err != nil {
-			cursor.isEnd = true
 			return true
 		}
 		defer nextPage.Put()
 		nextBucket := pageToBucket(nextPage)
 		// Reinitialize the cursor.
 		cursor.cellnum = 0
+		cursor.isEnd = (cursor.cellnum == nextBucket.numKeys)
 		cursor.curBucket = nextBucket
-		// If the next bucket is empty, step to the next node.
-		if cursor.cellnum == nextBucket.numKeys {
-			cursor.isEnd = cursor.StepForward()
+		if cursor.isEnd {
 			return cursor.StepForward()
 		}
-		cursor.isEnd = false
 		return false
 	}
 	// Else, just move the cursor forward.
 	cursor.cellnum++
-	cursor.isEnd = false
+	if cursor.cellnum >= cursor.curBucket.numKeys {
+		cursor.isEnd = true
+	}
 	return false
 }
 

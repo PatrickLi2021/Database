@@ -45,7 +45,6 @@ func (table *BTreeIndex) TableStart() (utils.Cursor, error) {
 // TableEnd returns a cursor pointing to the last entry in the db.
 // If the db is empty, returns a cursor to the new insertion position.
 func (table *BTreeIndex) TableEnd() (utils.Cursor, error) {
-	/* SOLUTION {{{ */
 	cursor := BTreeCursor{table: table, cellnum: 0}
 	// Get the root page.
 	curPage, err := table.pager.GetPage(table.rootPN)
@@ -71,14 +70,12 @@ func (table *BTreeIndex) TableEnd() (utils.Cursor, error) {
 	cursor.cellnum = rightmostNode.numKeys - 1
 	cursor.curNode = rightmostNode
 	return &cursor, nil
-	/* SOLUTION }}} */
 }
 
 // TableFind returns a cursor pointing to the given key.
 // If the key is not found, returns a cursor to the new insertion position.
 // Hint: use keyToNodeEntry
 func (table *BTreeIndex) TableFind(key int64) (utils.Cursor, error) {
-	/* SOLUTION {{{ */
 	cursor := BTreeCursor{table: table}
 	// Get the root page.
 	rootPage, err := table.pager.GetPage(table.rootPN)
@@ -97,12 +94,33 @@ func (table *BTreeIndex) TableFind(key int64) (utils.Cursor, error) {
 	cursor.isEnd = (cellnum == leaf.numKeys)
 	cursor.curNode = leaf
 	return &cursor, nil
-	/* SOLUTION }}} */
 }
 
 // TableFindRange returns a slice of Entries with keys between the startKey and endKey.
 func (table *BTreeIndex) TableFindRange(startKey int64, endKey int64) ([]utils.Entry, error) {
-	panic("function not yet implemented")
+	/* SOLUTION {{{ */
+	// Initialize entries array, get starting cursor.
+	entries := make([]utils.Entry, 0)
+	cursor, err := table.TableFind(startKey)
+	if err != nil {
+		return entries, err
+	}
+	// Keep advancing the cursor and adding the current entry to the list of
+	// entries until reaching the end key.
+	curEntry, err := cursor.GetEntry()
+	if err != nil {
+		return entries, err
+	}
+	for endKey > curEntry.GetKey() && !cursor.IsEnd() {
+		entries = append(entries, curEntry)
+		cursor.StepForward()
+		curEntry, err = cursor.GetEntry()
+		if err != nil {
+			return entries, err
+		}
+	}
+	return entries, nil
+	/* SOLUTION }}} */
 }
 
 // stepForward moves the cursor ahead by one entry.
