@@ -104,11 +104,11 @@ func probeBuckets(
 	}
 	for i := 0; i < len(right_bucket_entries); i++ {
 		for j := 0; j < len(left_bucket_entries); j++ {
-			current_left_key := left_bucket_entries[i].GetKey()
-			current_right_key := right_bucket_entries[j].GetKey()
+			current_left_key := left_bucket_entries[j].GetKey()
+			current_right_key := right_bucket_entries[i].GetKey()
 			// Check if there's a match between keys
 			if current_left_key == current_right_key {
-				current_left_value := left_bucket_entries[i].GetValue()
+				current_left_value := left_bucket_entries[j].GetValue()
 				current_right_value := right_bucket_entries[i].GetValue()
 				// Set the left and right entries upon finding a match
 				left_entry := hash.HashEntry{}
