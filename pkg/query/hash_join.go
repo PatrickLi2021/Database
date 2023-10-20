@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	db "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/db"
@@ -49,7 +50,7 @@ func buildHashIndex(
 	// Loop over all entries using cursor
 	for {
 		if cursor.IsEnd() {
-			break
+			continue
 		}
 		// Get entry
 		current_entry, get_entry_error := cursor.GetEntry()
@@ -59,6 +60,8 @@ func buildHashIndex(
 		// Extract key and value from entry
 		current_key := current_entry.GetKey()
 		current_value := current_entry.GetValue()
+		fmt.Print(current_key)
+		fmt.Print(current_value)
 		if useKey {
 			// Use table key as actual hash table key
 			tempIndex.Insert(current_key, current_value)		
