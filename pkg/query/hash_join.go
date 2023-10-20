@@ -47,7 +47,10 @@ func buildHashIndex(
 		return nil, dbName, cursor_error
 	}
 	// Loop over all entries using cursor
-	for cursor.StepForward() {
+	for {
+		if cursor.IsEnd() {
+			break
+		}
 		// Get entry
 		current_entry, get_entry_error := cursor.GetEntry()
 		if get_entry_error != nil {
@@ -62,6 +65,9 @@ func buildHashIndex(
 		} else {
 		 	// Use table value as actual hash table key
 			tempIndex.Insert(current_value, current_key)
+		}
+		if cursor.StepForward() {
+			break
 		}
 	}
 	return tempIndex, dbName, nil
