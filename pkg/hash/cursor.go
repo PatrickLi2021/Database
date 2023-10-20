@@ -24,6 +24,9 @@ func (table *HashIndex) TableStart() (utils.Cursor, error) {
 	defer curPage.Put()
 	cursor.curBucket = pageToBucket(curPage)
 	cursor.isEnd = (cursor.curBucket.numKeys == 0)
+	if cursor.isEnd {
+		cursor.isEnd = cursor.StepForward()
+	}
 	return &cursor, nil
 }
 
@@ -34,11 +37,13 @@ func (cursor *HashCursor) StepForward() bool {
 		// Get the next page number.
 		nextPN := cursor.curBucket.page.GetPageNum() + 1
 		if nextPN >= cursor.curBucket.page.GetPager().GetNumPages() {
+			cursor.isEnd = true
 			return true
 		}
 		// Convert the page to a bucket.
 		nextPage, err := cursor.table.pager.GetPage(nextPN)
 		if err != nil {
+			cursor.isEnd = true
 			return true
 		}
 		defer nextPage.Put()
@@ -48,8 +53,10 @@ func (cursor *HashCursor) StepForward() bool {
 		cursor.isEnd = (cursor.cellnum == nextBucket.numKeys)
 		cursor.curBucket = nextBucket
 		if cursor.isEnd {
+			cursor.isEnd = cursor.StepForward()
 			return cursor.StepForward()
 		}
+		cursor.isEnd = false
 		return false
 	}
 	// Else, just move the cursor forward.
@@ -57,6 +64,7 @@ func (cursor *HashCursor) StepForward() bool {
 	if cursor.cellnum >= cursor.curBucket.numKeys {
 		cursor.isEnd = true
 	}
+	cursor.isEnd = false
 	return false
 }
 
