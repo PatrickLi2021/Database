@@ -20,7 +20,7 @@ func (t *Transaction) WLock() {
 	t.lock.Lock()
 }
 
-// Release the write lock on the tx
+// Release the write lock on the transaction
 func (t *Transaction) WUnlock() {
 	t.lock.Unlock()
 }

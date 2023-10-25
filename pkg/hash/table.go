@@ -84,7 +84,7 @@ func (table *HashTable) Find(key int64) (utils.Entry, error) {
 		table.RUnlock()
 		return nil, err
 	}
-	// bucket.RLock()
+	// bucket.RLock(), we want to unlock the table because we've already located the bucket we need
 	table.RUnlock()
 	defer bucket.page.Put()
 
@@ -159,26 +159,6 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 }
 
 func (table *HashTable) Insert(key int64, value int64) error {
-	/* SOLUTION {{{ */
-	hash := Hasher(key, table.depth)
-	bucket, err := table.GetBucket(hash)
-	if err != nil {
-		return err
-	}
-	defer bucket.page.Put()
-	split, err := bucket.Insert(key, value)
-	if err != nil {
-		return err
-	}
-	if !split {
-		return nil
-	}
-	return table.Split(bucket, hash)
-	/* SOLUTION }}} */
-}
-
-// Update the given key-value pair.
-func (table *HashTable) Update(key int64, value int64) error {
 	table.RLock()
 	hash := Hasher(key, table.depth)
 	bucket, err := table.GetAndLockBucket(hash, WRITE_LOCK)
@@ -188,6 +168,36 @@ func (table *HashTable) Update(key int64, value int64) error {
 	}
 	defer bucket.page.Put()
 	table.RUnlock()
+	split, err := bucket.Insert(key, value)
+	if err != nil {
+		bucket.WUnlock()
+		return err
+	}
+	if !split {
+		bucket.WUnlock()
+		return nil
+	}
+	bucket.WUnlock()
+	table.WLock()
+	return table.Split(bucket, hash)
+}
+
+// Update the given key-value pair.
+func (table *HashTable) Update(key int64, value int64) error {
+	// Lock the table because we're about to perform an update (we only need a read lock here because we just use the
+	// table for finding our bucket)
+	table.RLock()
+	hash := Hasher(key, table.depth)
+	// We get and lock the bucket with a write
+	bucket, err := table.GetAndLockBucket(hash, WRITE_LOCK)
+	if err != nil {
+		table.RUnlock()
+		return err
+	}
+	defer bucket.page.Put()
+	// Now that we've acquired the bucket, we can unlock the table
+	table.RUnlock()
+	// Defer unlocking the bucket until after we update the key
 	defer bucket.WUnlock()
 	err2 := bucket.Update(key, value)
 	return err2
@@ -212,22 +222,30 @@ func (table *HashTable) Delete(key int64) error {
 
 // Select all entries in this table.
 func (table *HashTable) Select() ([]utils.Entry, error) {
-	/* SOLUTION {{{ */
 	ret := make([]utils.Entry, 0)
+	// Lock the table before iterating over buckets
+	table.RLock()
 	for i := int64(0); i < table.pager.GetNumPages(); i++ {
 		bucket, err := table.GetBucketByPN(i)
 		if err != nil {
+			table.RUnlock()
 			return nil, err
 		}
+		// Once we get the bucket, we lock it
+		bucket.RLock()
 		entries, err := bucket.Select()
 		bucket.GetPage().Put()
 		if err != nil {
+			table.RUnlock()
+			bucket.RUnlock()
 			return nil, err
 		}
 		ret = append(ret, entries...)
+		// Once we are done getting a bucket's entries and appending them, we can unlock
+		bucket.RUnlock()
 	}
+	table.RUnlock()
 	return ret, nil
-	/* SOLUTION }}} */
 }
 
 // Print out each bucket.

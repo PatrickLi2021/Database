@@ -37,7 +37,6 @@ func (replConfig *REPLConfig) GetAddr() uuid.UUID {
 
 // Construct an empty REPL.
 func NewRepl() *REPL {
-<<<<<<< HEAD
 	return &REPL{make(map[string]func(string, *REPLConfig) error),
 		make(map[string]string)}
 }
@@ -51,14 +50,10 @@ func contains(s []string, str string) bool {
 	}
 
 	return false
-=======
-	panic("function not yet implemented")
->>>>>>> 4b3de63abcb5d0e80845a3cb244d01f2b8a2e41d
 }
 
 // Combines a slice of REPLs.
 func CombineRepls(repls []*REPL) (*REPL, error) {
-<<<<<<< HEAD
 	if len(repls) == 0 {
 		return NewRepl(), nil
 	} else {
@@ -76,9 +71,6 @@ func CombineRepls(repls []*REPL) (*REPL, error) {
 		}
 		return newrepl, nil
 	}
-=======
-	panic("function not yet implemented")
->>>>>>> 4b3de63abcb5d0e80845a3cb244d01f2b8a2e41d
 }
 
 // Get commands.
@@ -93,21 +85,17 @@ func (r *REPL) GetHelp() map[string]string {
 
 // Add a command, along with its help string, to the set of commands.
 func (r *REPL) AddCommand(trigger string, action func(string, *REPLConfig) error, help string) {
-<<<<<<< HEAD
 	r.commands[trigger] = action
 	r.help[trigger] = help
-=======
-	panic("function not yet implemented")
->>>>>>> 4b3de63abcb5d0e80845a3cb244d01f2b8a2e41d
 }
 
 // Return all REPL usage information as a string.
 func (r *REPL) HelpString() string {
-	total_string := ""
-	for _, value := range r.help {
-		total_string = total_string + " " + value
+	var sb strings.Builder
+	for k, v := range r.help {
+		sb.WriteString(fmt.Sprintf("%s: %s\n", k, v))
 	}
-	return total_string
+	return sb.String()
 }
 
 // Run the REPL.
@@ -125,7 +113,6 @@ func (r *REPL) Run(c net.Conn, clientId uuid.UUID, prompt string) {
 	scanner := bufio.NewScanner((reader))
 	replConfig := &REPLConfig{writer: writer, clientId: clientId}
 	// Begin the repl loop!
-<<<<<<< HEAD
 	/* SOLUTION {{{ */
 	io.WriteString(writer, prompt)
 	for scanner.Scan() {
@@ -157,14 +144,10 @@ func (r *REPL) Run(c net.Conn, clientId uuid.UUID, prompt string) {
 	// Print an additional line if we encountered an EOF character.
 	io.WriteString(writer, "\n")
 	/* SOLUTION }}} */
-=======
-	panic("function not yet implemented")
->>>>>>> 4b3de63abcb5d0e80845a3cb244d01f2b8a2e41d
 }
 
 // Run the REPL.
 func (r *REPL) RunChan(c chan string, clientId uuid.UUID, prompt string) {
-<<<<<<< HEAD
 	// Get reader and writer; stdin and stdout if no conn.
 	writer := os.Stdout
 	replConfig := &REPLConfig{writer: writer, clientId: clientId}
@@ -200,9 +183,6 @@ func (r *REPL) RunChan(c chan string, clientId uuid.UUID, prompt string) {
 	}
 	// Print an additional line if we encountered an EOF character.
 	io.WriteString(writer, "\n")
-=======
-	panic("function not yet implemented")
->>>>>>> 4b3de63abcb5d0e80845a3cb244d01f2b8a2e41d
 }
 
 // cleanInput preprocesses input to the db repl.
