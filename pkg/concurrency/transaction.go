@@ -8,6 +8,7 @@ import (
 	uuid "github.com/google/uuid"
 )
 
+// To detect cycles, run DFS on every node
 // Each client can have a transaction running. Each transaction has a list of locked resources.
 type Transaction struct {
 	clientId  uuid.UUID

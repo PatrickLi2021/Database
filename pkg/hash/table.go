@@ -84,7 +84,6 @@ func (table *HashTable) Find(key int64) (utils.Entry, error) {
 		table.RUnlock()
 		return nil, err
 	}
-	// bucket.RLock(), we want to unlock the table because we've already located the bucket we need
 	table.RUnlock()
 	defer bucket.page.Put()
 
@@ -159,27 +158,36 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 }
 
 func (table *HashTable) Insert(key int64, value int64) error {
+	// Lock table
 	table.RLock()
 	hash := Hasher(key, table.depth)
+	// Lock bucket
 	bucket, err := table.GetAndLockBucket(hash, WRITE_LOCK)
 	if err != nil {
 		table.WUnlock()
+		bucket.WUnlock()
 		return err
 	}
 	defer bucket.page.Put()
 	table.RUnlock()
 	split, err := bucket.Insert(key, value)
 	if err != nil {
+		// If there's an error, unlock both the table and the bucket
 		bucket.WUnlock()
 		return err
 	}
 	if !split {
+		// If there's an error, unlock both the table and the bucket
 		bucket.WUnlock()
 		return nil
 	}
-	bucket.WUnlock()
+	// If we're splitting, acquire a write lock on the table
 	table.WLock()
-	return table.Split(bucket, hash)
+	split_error := table.Split(bucket, hash)
+	// After we perform the split, release all locks
+	table.WUnlock()
+	bucket.WUnlock()
+	return split_error
 }
 
 // Update the given key-value pair.
@@ -209,11 +217,10 @@ func (table *HashTable) Delete(key int64) error {
 	hash := Hasher(key, table.depth)
 	bucket, err := table.GetAndLockBucket(hash, WRITE_LOCK)
 	if err != nil {
-		table.WUnlock()
+		table.RUnlock()
 		return err
 	}
 	defer bucket.page.Put()
-	// bucket.WLock()
 	table.RUnlock()
 	defer bucket.WUnlock()
 	err2 := bucket.Delete(key)
@@ -241,9 +248,10 @@ func (table *HashTable) Select() ([]utils.Entry, error) {
 			return nil, err
 		}
 		ret = append(ret, entries...)
-		// Once we are done getting a bucket's entries and appending them, we can unlock
+		// Once we are done getting a bucket's entries and appending them, we can unlock the bucket
 		bucket.RUnlock()
 	}
+	// After all buckets' entries have been appended, we can unlock the table
 	table.RUnlock()
 	return ret, nil
 }

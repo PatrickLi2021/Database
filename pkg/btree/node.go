@@ -56,7 +56,14 @@ func (node *LeafNode) search(key int64) int64 {
 // insert finds the appropriate place in a leaf node to insert a new tuple.
 // if update is true, allow overwriting existing keys. else, error.
 func (node *LeafNode) insert(key int64, value int64, update bool) Split {
-	/* SOLUTION {{{ */
+	// Preemptively check whether we can unlock our parent
+	// if we're updating, there isn't going to be any splitting
+	// unlock parent doesn't care about if we're updating
+	// If split returns an error, unlock all parents
+
+	node.unlockParent(false)
+	defer node.unlockParent(false)
+	
 	// Get insert position.
 	insertPos := node.search(key)
 	// Check if this is a duplicate entry.
@@ -85,7 +92,6 @@ func (node *LeafNode) insert(key int64, value int64, update bool) Split {
 		return node.split()
 	}
 	return Split{}
-	/* SOLUTION }}} */
 }
 
 // delete removes a given tuple from the leaf node, if the given key exists.
@@ -197,20 +203,45 @@ func (node *InternalNode) search(key int64) int64 {
 // insert finds the appropriate place in a leaf node to insert a new tuple.
 func (node *InternalNode) insert(key int64, value int64, update bool) Split {
 	// Insert the entry into the appropriate child node. Use getChildAt for the indexing
+	// Check to see if current node is at max key capacity
 	childIdx := node.search(key)
 	child, err := node.getChildAt(childIdx)
 	if err != nil {
 		return Split{err: err}
 	}
 	defer child.getPage().Put()
-	// Insert value into the child.
-	result := child.insert(key, value, update)
-	// Insert a new key into our node if necessary.
-	if result.isSplit {
-		split := node.insertSplit(result)
-		return split
+	// Splitting case
+	if node.numKeys == ENTRIES_PER_LEAF_NODE {
+		// Lock the child we are inserting into
+		_, err := node.getAndLockChildAt(childIdx)
+		node.initChild(child)
+		if err != nil {
+			return Split{err: err}
+		}
+		// Insert value into the child.
+		result := child.insert(key, value, update)
+		if result.isSplit {
+			// Insert split into node and check if this returns a split
+			split := node.insertSplit(result)
+			if split.isSplit {
+				node.getPage().WUnlock()
+				return split
+			} else {
+				node.unlockParent(true)
+			}
+		} else {
+			return Split{}
+		}
+	
+	// Non-splitting case
+	} else {
+		// Lock child page then insert
+		child.getPage().WLock()
+		result := child.insert(key, value, update)
+		node.unlockParent(false)
+		return result
 	}
-	return Split{err: result.err}
+	return Split{}
 }
 
 // insertSplit inserts a split result into an internal node.

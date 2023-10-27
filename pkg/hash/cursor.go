@@ -28,6 +28,8 @@ func (table *HashIndex) TableStart() (utils.Cursor, error) {
 }
 
 // StepForward moves the cursor ahead by one entry.
+// Lock cursor and remember to unlock the cursor
+// Lock new page and unlock new page before returning
 func (cursor *HashCursor) StepForward() bool {
 	// If the cursor is at the end of the bucket, try visiting the next bucket.
 	if cursor.isEnd {

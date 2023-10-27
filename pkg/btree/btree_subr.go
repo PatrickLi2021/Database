@@ -397,6 +397,8 @@ func unsafeUnlockRoot(root Node) {
 
 func (node *InternalNode) initChild(child Node) {
 	// Set the NodeLockHeader parent field to be this node and lock the node.
+	// Sets the child's parents to be the node we are calling this function on
+	// you set your child's parent equal to this node
 	switch castedChild := child.(type) {
 	case *InternalNode:
 		castedChild.parent = node
@@ -415,11 +417,13 @@ func (node *InternalNode) unlockParent(force bool) error {
 	}
 	// Else, unlock the parents recursively, and remove parent pointers.
 	parent := node.parent
+	// remove parent pointer
 	node.parent = nil
 	for parent != nil {
 		switch castedParent := parent.(type) {
 		case *InternalNode:
 			parent = castedParent.parent
+			// Unlock parent
 			castedParent.unlock()
 		case *LeafNode:
 			return errors.New("should never have a leaf as a parent")
