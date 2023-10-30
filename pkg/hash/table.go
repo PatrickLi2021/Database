@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	pager "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/pager"
-	utils "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/utils"
+	utils "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/utils"	
 )
 
 // HashTable definitions.
@@ -159,34 +159,25 @@ func (table *HashTable) Split(bucket *HashBucket, hash int64) error {
 
 func (table *HashTable) Insert(key int64, value int64) error {
 	// Lock table
-	table.RLock()
+	table.WLock()
+	defer table.WUnlock()
 	hash := Hasher(key, table.depth)
 	// Lock bucket
 	bucket, err := table.GetAndLockBucket(hash, WRITE_LOCK)
 	if err != nil {
-		table.WUnlock()
-		bucket.WUnlock()
+		// If error is returned here, no bucket was locked
 		return err
 	}
+	defer bucket.WUnlock()
 	defer bucket.page.Put()
-	table.RUnlock()
 	split, err := bucket.Insert(key, value)
 	if err != nil {
-		// If there's an error, unlock both the table and the bucket
-		bucket.WUnlock()
 		return err
 	}
 	if !split {
-		// If there's an error, unlock both the table and the bucket
-		bucket.WUnlock()
 		return nil
 	}
-	// If we're splitting, acquire a write lock on the table
-	table.WLock()
 	split_error := table.Split(bucket, hash)
-	// After we perform the split, release all locks
-	table.WUnlock()
-	bucket.WUnlock()
 	return split_error
 }
 
@@ -229,17 +220,15 @@ func (table *HashTable) Delete(key int64) error {
 
 // Select all entries in this table.
 func (table *HashTable) Select() ([]utils.Entry, error) {
+	table.RLock()
+	defer table.RUnlock()
 	ret := make([]utils.Entry, 0)
 	// Lock the table before iterating over buckets
-	table.RLock()
 	for i := int64(0); i < table.pager.GetNumPages(); i++ {
-		bucket, err := table.GetBucketByPN(i)
+		bucket, err := table.GetAndLockBucketByPN(i, READ_LOCK)
 		if err != nil {
-			table.RUnlock()
 			return nil, err
 		}
-		// Once we get the bucket, we lock it
-		bucket.RLock()
 		entries, err := bucket.Select()
 		bucket.GetPage().Put()
 		if err != nil {
@@ -251,8 +240,6 @@ func (table *HashTable) Select() ([]utils.Entry, error) {
 		// Once we are done getting a bucket's entries and appending them, we can unlock the bucket
 		bucket.RUnlock()
 	}
-	// After all buckets' entries have been appended, we can unlock the table
-	table.RUnlock()
 	return ret, nil
 }
 

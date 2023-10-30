@@ -61,6 +61,10 @@ func (node *LeafNode) insert(key int64, value int64, update bool) Split {
 	// unlock parent doesn't care about if we're updating
 	// If split returns an error, unlock all parents
 
+	// Case when update is false
+	if !update {
+		
+	}
 	node.unlockParent(false)
 	defer node.unlockParent(false)
 	
