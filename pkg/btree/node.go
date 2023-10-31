@@ -62,25 +62,31 @@ func (node *LeafNode) insert(key int64, value int64, update bool) Split {
 	// If split returns an error, unlock all parents
 
 	// Case when update is false
-	if !update {
-		
-	}
 	node.unlockParent(false)
-	defer node.unlockParent(false)
+	defer node.unlock()
 	
 	// Get insert position.
 	insertPos := node.search(key)
 	// Check if this is a duplicate entry.
 	if insertPos < node.numKeys && node.getKeyAt(insertPos) == key {
 		if update {
+			if node.numKeys == ENTRIES_PER_LEAF_NODE {
+				node.unlockParent(true)
+			}
 			node.updateValueAt(insertPos, value)
 			return Split{}
 		} else {
+			if node.numKeys == ENTRIES_PER_LEAF_NODE {
+				node.unlockParent(true)
+			}
 			return Split{err: errors.New("cannot insert duplicate key")}
 		}
 	}
 	// Return an error if we're updating a non-existent entry.
 	if update {
+		if node.numKeys == ENTRIES_PER_LEAF_NODE {
+			node.unlockParent(true)
+		}
 		return Split{err: errors.New("cannot update non-existent entry")}
 	}
 	// Shift entries to the right if needed.
@@ -207,70 +213,53 @@ func (node *InternalNode) search(key int64) int64 {
 // insert finds the appropriate place in a leaf node to insert a new tuple.
 func (node *InternalNode) insert(key int64, value int64, update bool) Split {
 	// Insert the entry into the appropriate child node. Use getChildAt for the indexing
-	// Check to see if current node is at max key capacity
+	node.unlockParent(false)
 	childIdx := node.search(key)
-	child, err := node.getChildAt(childIdx)
+	child, err := node.getAndLockChildAt(childIdx)
+	if node.numKeys == ENTRIES_PER_LEAF_NODE && err != nil {
+		node.unlockParent(true)
+		return Split{err: err}
+	}
 	if err != nil {
 		return Split{err: err}
 	}
 	defer child.getPage().Put()
-	// Splitting case
-	if node.numKeys == ENTRIES_PER_LEAF_NODE {
-		// Lock the child we are inserting into
-		_, err := node.getAndLockChildAt(childIdx)
-		node.initChild(child)
-		if err != nil {
-			return Split{err: err}
-		}
-		// Insert value into the child.
-		result := child.insert(key, value, update)
-		if result.isSplit {
-			// Insert split into node and check if this returns a split
-			split := node.insertSplit(result)
-			if split.isSplit {
-				node.getPage().WUnlock()
-				return split
-			} else {
-				node.unlockParent(true)
-			}
-		} else {
-			return Split{}
-		}
-	
-	// Non-splitting case
-	} else {
-		// Lock child page then insert
-		child.getPage().WLock()
-		result := child.insert(key, value, update)
-		node.unlockParent(false)
-		return result
+	node.initChild(child)
+	// We know we have child successfully. Insert value into the child.
+	result := child.insert(key, value, update)
+	// Insert a new key into our node if necessary.
+	if result.isSplit {
+		split := node.insertSplit(result)
+		// child insert does not unlock parent if split is occurred
+		node.unlock()
+		return split
 	}
-	return Split{}
+	return Split{err: result.err}
 }
 
 // insertSplit inserts a split result into an internal node.
 // If this insertion results in another split, the split is cascaded upwards.
 func (node *InternalNode) insertSplit(split Split) Split {
 	/* SOLUTION {{{ */
-	insertPos := node.search(split.key)
-	// Shift keys to the right.
-	for i := node.numKeys - 1; i >= insertPos; i-- {
-		node.updateKeyAt(i+1, node.getKeyAt(i))
-	}
-	// Shift children to the right.
-	for i := node.numKeys; i > insertPos; i-- {
-		node.updatePNAt(i+1, node.getPNAt(i))
-	}
-	// Insert the new key and pagenumber at this position.
-	node.updateKeyAt(insertPos, split.key)
-	node.updatePNAt(insertPos+1, split.rightPN)
-	node.updateNumKeys(node.numKeys + 1)
-	// Check if we need to split.
-	if node.numKeys > KEYS_PER_INTERNAL_NODE {
-		return node.split()
-	}
-	return Split{}
-	/* SOLUTION }}} */
+		insertPos := node.search(split.key)
+		// Shift keys to the right.
+		for i := node.numKeys - 1; i >= insertPos; i-- {
+			node.updateKeyAt(i+1, node.getKeyAt(i))
+		}
+		// Shift children to the right.
+		for i := node.numKeys; i > insertPos; i-- {
+			node.updatePNAt(i+1, node.getPNAt(i))
+		}
+		// Insert the new key and pagenumber at this position.
+		node.updateKeyAt(insertPos, split.key)
+		node.updatePNAt(insertPos+1, split.rightPN)
+		node.updateNumKeys(node.numKeys + 1)
+		// Check if we need to split.
+		if node.numKeys > KEYS_PER_INTERNAL_NODE {
+			return node.split()
+		}
+		return Split{}
+		/* SOLUTION }}} */
 }
 
 // delete removes a given tuple from the leaf node, if the given key exists.
