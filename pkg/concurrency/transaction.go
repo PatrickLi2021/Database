@@ -142,18 +142,21 @@ func (tm *TransactionManager) Unlock(clientId uuid.UUID, table db.Index, resourc
 	defer tm.tmMtx.RUnlock()
 	// Fetch transaction by UUID and lock it, since we will be getting resources
 	transaction, found_status := tm.GetTransaction(clientId)
-	transaction.lock.RLock()
 	if found_status {
+		transaction.RLock()
+		defer transaction.RUnlock()
 		map_of_resources := transaction.GetResources()
-		for resource := range map_of_resources {
-			// Checking if we have rights to resource (resource is in map_of_resources)
-			if resource.resourceKey == resourceKey {
-				delete(map_of_resources, resource)
-				tm.lm.Unlock(resource, lType)
-				return nil
-			}
+		resource := Resource{tableName: table.GetName(), resourceKey: resourceKey}
+		resource_lock_type, found := map_of_resources[resource]
+		if !found {
 			return errors.New("resource could not be found")
 		}
+		if resource_lock_type != lType {
+			return errors.New("lock type mismatch")
+		}
+		delete(map_of_resources, resource)
+		tm.lm.Unlock(resource, lType)
+		return nil
 	}
 	return errors.New("transaction was not found")
 }
