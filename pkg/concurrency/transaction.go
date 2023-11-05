@@ -91,7 +91,47 @@ func (tm *TransactionManager) Begin(clientId uuid.UUID) error {
 
 // Locks the given resource. Will return an error if deadlock is created.
 func (tm *TransactionManager) Lock(clientId uuid.UUID, table db.Index, resourceKey int64, lType LockType) error {
-	panic("function not yet implemented")
+	// Read lock tmMtx outside of getTransaction
+	tm.tmMtx.RLock()
+	defer tm.tmMtx.RUnlock()
+	// Fetch transaction by UUID and lock it, since we will be getting resources
+	transaction, found_status := tm.GetTransaction(clientId)
+	transaction.lock.RLock()
+	// If the transaction is found, lock the resource
+	if found_status {
+		map_of_resources := transaction.GetResources()
+		for resource := range map_of_resources {
+			// Checking if we have rights to resource (resource is in map_of_resources)
+			if resource.resourceKey == resourceKey {
+				// Find what lock we have
+				current_lock_type := map_of_resources[resource]
+				// Currently hold RLock and request RLock again
+				if current_lock_type == 0 && lType == R_LOCK {
+					return nil
+			
+				// Currently hold RLock and request WLock
+				} else if current_lock_type == 0 && lType == W_LOCK {
+					return errors.New("cannot upgrade lock type")
+
+				// Currently hold WLock
+				} else if current_lock_type == 1 {
+					return nil
+				}
+				// Look for conflicting transactions
+				conflicting_transactions := tm.discoverTransactions(resource, current_lock_type)
+				// If conflicting transactions are found, add edges to precedence graph
+					for _, conflicting_transaction := range conflicting_transactions {
+						tm.pGraph.AddEdge(transaction, conflicting_transaction)
+					}
+				if tm.pGraph.DetectCycle() {
+					return errors.New("cycle detected")
+				}
+				// Add resource to transaction's resource list and lock it
+				transaction.resources[resource] = lType
+			}
+		}
+	}
+	return nil
 }
 
 // Unlocks the given resource.
