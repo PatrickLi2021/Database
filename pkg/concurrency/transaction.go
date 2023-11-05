@@ -162,9 +162,6 @@ func (tm *TransactionManager) Unlock(clientId uuid.UUID, table db.Index, resourc
 		map_of_resources := transaction.GetResources()
 		resource := Resource{tableName: table.GetName(), resourceKey: resourceKey}
 		resource_lock_type, found := map_of_resources[resource]
-		if !found {
-			return errors.New("resource could not be found")
-		}
 		if resource_lock_type != lType {
 			return errors.New("lock type mismatch")
 		}
