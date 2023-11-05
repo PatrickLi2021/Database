@@ -101,12 +101,7 @@ func (tm *TransactionManager) Lock(clientId uuid.UUID, table db.Index, resourceK
 		map_of_resources := transaction.GetResources()
 		// Construct resource
 		resource := Resource{tableName: table.GetName(), resourceKey: resourceKey}
-		resource_lock_type, found := map_of_resources[resource]
-		if !found {
-			transaction.RUnlock()
-			tm.tmMtx.RUnlock()
-			return errors.New("resource could not be found")
-		}
+		resource_lock_type, _ := map_of_resources[resource]
 		// Currently hold RLock and request RLock again
 		if resource_lock_type == 0 && lType == R_LOCK {
 			transaction.RUnlock()
@@ -161,7 +156,10 @@ func (tm *TransactionManager) Unlock(clientId uuid.UUID, table db.Index, resourc
 		defer transaction.RUnlock()
 		map_of_resources := transaction.GetResources()
 		resource := Resource{tableName: table.GetName(), resourceKey: resourceKey}
-		resource_lock_type, _ := map_of_resources[resource]
+		resource_lock_type, found := map_of_resources[resource]
+		if !found {
+			return errors.New("resource could not be found")
+		}
 		if resource_lock_type != lType {
 			return errors.New("lock type mismatch")
 		}
