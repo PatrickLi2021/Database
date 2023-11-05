@@ -128,15 +128,34 @@ func (tm *TransactionManager) Lock(clientId uuid.UUID, table db.Index, resourceK
 				}
 				// Add resource to transaction's resource list and lock it
 				transaction.resources[resource] = lType
+				tm.lm.Lock(resource, lType)
 			}
 		}
 	}
-	return nil
+	return errors.New("transaction was not found")
 }
 
 // Unlocks the given resource.
 func (tm *TransactionManager) Unlock(clientId uuid.UUID, table db.Index, resourceKey int64, lType LockType) error {
-	panic("function not yet implemented")
+	// Read lock tmMtx outside of getTransaction
+	tm.tmMtx.RLock()
+	defer tm.tmMtx.RUnlock()
+	// Fetch transaction by UUID and lock it, since we will be getting resources
+	transaction, found_status := tm.GetTransaction(clientId)
+	transaction.lock.RLock()
+	if found_status {
+		map_of_resources := transaction.GetResources()
+		for resource := range map_of_resources {
+			// Checking if we have rights to resource (resource is in map_of_resources)
+			if resource.resourceKey == resourceKey {
+				delete(map_of_resources, resource)
+				tm.lm.Unlock(resource, lType)
+				return nil
+			}
+			return errors.New("resource could not be found")
+		}
+	}
+	return errors.New("transaction was not found")
 }
 
 // Commits the given transaction and removes it from the running transactions list.
