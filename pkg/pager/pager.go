@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
-	"sync"
 	"path/filepath"
+	"strings"
+	"sync"	
 
 	config "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/config"
 	list "github.com/csci1270-fall-2023/dbms-projects-handout/pkg/list"
@@ -59,7 +59,7 @@ func (pager *Pager) HasFile() (hasFile bool) {
 }
 
 // GetFileName returns the file name.
-func (pager *Pager) GetFileName() (filename string) {
+func (pager *Pager) GetFileName() string {
 	return filepath.Base(pager.file.Name())
 }
 
