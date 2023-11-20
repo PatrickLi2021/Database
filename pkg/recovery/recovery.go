@@ -215,11 +215,6 @@ func (rm *RecoveryManager) Undo(log Log) error {
 
 // Do a full recovery to the most recent checkpoint on startup.
 func (rm *RecoveryManager) Recover() error {
-	// Seek backward through the logs to the most recent checkpoint and note which transactions are 
-	// currently active. Replay all actions from the most recent checkpoint to the end of the log, keeping
-	// track of which transactions are active
-	// Undo all transactions that have failed to commit
-	// Commit those undone transactions to mark them as done
 
 	all_logs, checkpoint_pos, read_log_error := rm.readLogs()
 	if read_log_error != nil {
@@ -234,6 +229,7 @@ func (rm *RecoveryManager) Recover() error {
 		// Create map of active transactions from list
 		for i := 0; i < len(checkpoint_log.ids); i++ {
 			active_transactions[checkpoint_log.ids[i]] = 1
+			rm.tm.Begin(checkpoint_log.ids[i])
 		}
 	}
 
