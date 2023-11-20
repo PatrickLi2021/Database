@@ -220,6 +220,37 @@ func (rm *RecoveryManager) Recover() error {
 
 // Roll back a particular transaction.
 func (rm *RecoveryManager) Rollback(clientId uuid.UUID) error {
+	list_of_logs := rm.txStack[clientId]
+	// If list of logs is empty, commit then return
+	if len(list_of_logs) == 0 {
+		rm.Commit(clientId)
+		return nil
+	
+	} else {
+		// Check to see if the first of the logs is a start log
+		first_log := list_of_logs[0]
+		switch first_log.(type) {
+		case *(startLog):
+			// If log is well-formed, we want to delete from the log then
+			for i := len(list_of_logs) - 1; i >= 0; i-- {
+				switch current_log := list_of_logs[i].(type) {
+				case *(editLog):
+					rm.Undo(current_log)
+				}
+			}
+			// Commit to transaction and recovery managers
+			rm.Commit(clientId)
+			rm.tm.Commit(clientId)
+		default:
+			return errors.New("First log was not a start log")
+		}
+	}
+	// If there are logs, then we want to make sure that those logs are valid and well-formed. We only need to
+	// check if the first of the logs is a start log to signify that we started a transaction. That's how we 
+	// check if a log is valid. We then rollback the rest of the logs.
+	// Commit to both teh RecoveryManager and Transactionmanager when done
+	
+
 	panic("function not yet implemented")
 }
 
