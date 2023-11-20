@@ -215,6 +215,12 @@ func (rm *RecoveryManager) Undo(log Log) error {
 
 // Do a full recovery to the most recent checkpoint on startup.
 func (rm *RecoveryManager) Recover() error {
+	// Seek backward through the logs to the most recent checkpoint and note which transactions are 
+	// currently active. Replay all actions from the most recent checkpoint to the end of the log, keeping
+	// track of which transactions are active
+	// Undo all transactions that have failed to commit
+	// Commit those undone transactions to mark them as done
+
 	panic("function not yet implemented")
 }
 
@@ -249,9 +255,6 @@ func (rm *RecoveryManager) Rollback(clientId uuid.UUID) error {
 	// check if the first of the logs is a start log to signify that we started a transaction. That's how we 
 	// check if a log is valid. We then rollback the rest of the logs.
 	// Commit to both teh RecoveryManager and Transactionmanager when done
-	
-
-	panic("function not yet implemented")
 }
 
 // Primes the database for recovery
