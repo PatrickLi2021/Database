@@ -221,7 +221,71 @@ func (rm *RecoveryManager) Recover() error {
 	// Undo all transactions that have failed to commit
 	// Commit those undone transactions to mark them as done
 
-	panic("function not yet implemented")
+	all_logs, checkpoint_pos, read_log_error := rm.readLogs()
+	if read_log_error != nil {
+		return errors.New("couldn't read all logs")
+	}
+	checkpoint_log := all_logs[checkpoint_pos]
+	active_transactions := make(map[uuid.UUID]int)
+	
+	switch checkpoint_log := checkpoint_log.(type) {
+	// If log at checkpoint position is a checkpoint log, get all active transactions
+	case *(checkpointLog):
+		// Create map of active transactions from list
+		for i := 0; i < len(checkpoint_log.ids); i++ {
+			active_transactions[checkpoint_log.ids[i]] = 1
+		}
+	}
+
+	// Accumulate list of active logs
+	for i := checkpoint_pos; i < len(all_logs); i++ {
+		current_log := all_logs[i]
+		switch current_log := current_log.(type) {
+		case *(startLog):
+			// Add log to map
+			_ , exists := active_transactions[current_log.id]
+			if !exists {
+				active_transactions[current_log.id] = 1
+			}
+			// Call Begin() to redo the log
+			rm.tm.Begin(current_log.id)
+		case *(commitLog):
+			// Remove log from map (because it is not active anymore)
+			_, exists := active_transactions[current_log.id]
+			if exists {
+				delete(active_transactions, current_log.id)
+			}
+			// Call commit to redo the log
+			rm.Commit(current_log.id)
+		case *(tableLog):
+			rm.Redo(current_log)
+		case *(editLog):
+			// Add log to map
+			_ , exists := active_transactions[current_log.id]
+			if !exists {
+				active_transactions[current_log.id] = 1
+			}
+			rm.Redo(current_log)
+		}
+	}
+	// For every transaction in the active transactions list, undo all of the logs
+	for i := len(all_logs) - 1; i >= 0; i-- {
+		current_log := all_logs[i]
+		switch current_log := current_log.(type) {
+
+		case *(editLog):
+			_, exists := active_transactions[current_log.id]
+			if exists {
+				rm.Undo(current_log)
+			}
+
+		case *(startLog):
+			delete(active_transactions, current_log.id)
+			rm.Commit(current_log.id)
+			rm.tm.Commit(current_log.id)
+		}
+	}
+	return nil
 }
 
 // Roll back a particular transaction.
