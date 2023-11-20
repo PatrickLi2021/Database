@@ -250,6 +250,7 @@ func (rm *RecoveryManager) Rollback(clientId uuid.UUID) error {
 		default:
 			return errors.New("First log was not a start log")
 		}
+		return nil
 	}
 	// If there are logs, then we want to make sure that those logs are valid and well-formed. We only need to
 	// check if the first of the logs is a start log to signify that we started a transaction. That's how we 
