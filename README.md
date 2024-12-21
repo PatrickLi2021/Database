@@ -39,6 +39,57 @@ The pager's page table ensures that when a page is fetched from disk, it is plac
 ### Handling Dirty Pages
 A dirty page is one that has been modified in memory but not yet written back to disk. The pager tracks dirty pages and ensures that they are flushed to disk before they are evicted. The flushing of dirty pages is critical for maintaining consistency between the in-memory state and the persisted state on disk.
 
+## B+ Tree Indexer
+
+The B+ Tree optimizes both search and data retrieval operations. Unlike binary search trees (BST), the B+ Tree generalizes the concept to allow nodes with more than two children, resulting in better performance for large datasets. This subsection provides a comprehensive explanation of how the B+ Tree is structured and how its insertion and splitting mechanisms are implemented in this project.
+
+### B+ Tree Structure
+In the context of this project, the B+ Tree is implemented with specific properties and operations that distinguish it from a regular B-Tree. A B+ Tree adheres to the following key principles:
+
+1. **Internal Nodes and Leaf Nodes:**
+  - Internal Nodes: These nodes contain only keys, which are used for searching. Internal nodes do not store actual data but instead point to child nodes, which are either internal or leaf nodes.
+  - Leaf Nodes: Unlike internal nodes, leaf nodes store actual data values and point to their right neighbor, facilitating fast linear scans through the tree.
+
+2. **Order of Nodes:**
+
+  - Each node can have a maximum of _m_ children, and every non-root internal node must have at least _⌈m/2⌉_ children.
+  - All leaves appear at the same level, which allows for efficient access and uniformity in node traversal.
+
+3. **Splitting and Insertion:**
+
+  - Insertion: When inserting a new key into a leaf node, if the node is full, it is split. The median key from the split node is then pushed up into the parent node. If the parent node is also full, it too will split, and this process may propagate up to the root.
+  - Splitting: The process of splitting a node is crucial for maintaining the balance of the B+ Tree. When a node is full, the node is split into two equal parts, and the median key is propagated upward. This ensures that the B+ Tree retains its properties of balanced growth.
+
+4. Search and Query:
+
+Search operations start from the root and traverse the tree using binary search until the correct leaf node is found. Once the leaf node is reached, the desired key is searched using a second binary search.
+
+### Relevant Files for B+ Tree Implementation
+In this project, the B+ Tree is implemented across several key files. Each of these files handles different aspects of the tree’s functionality:
+
+1. `pkg/btree/leafNode.go`: This file contains the functions related to leaf nodes. Key functions include:
+
+  - `insert(key int64, value int64, update bool)`: This function inserts a key-value pair into the leaf node. If the node becomes full after insertion, it will split, and the Split struct will be returned to indicate the split operation.
+  - `split()`: This function splits a leaf node when it becomes full. The median key is pushed to the parent node, and the data is redistributed between the original and the new leaf node.
+
+2. `pkg/btree/internalNode.go`: Internal nodes are managed here. Important functions in this file are:
+
+  - `insertSplit(split Split)`: Handles the insertion of a new key from a child node's split into an internal node.
+  - `split()`: Splits an internal node when it becomes full and propagates the median key to the parent.
+
+3. `pkg/btree/btree.go`: This file manages the overall B+ Tree structure and its operations. It contains:
+
+  - `Select()`: This function retrieves a set of entries from the tree. It relies on the cursor abstraction to traverse through leaf nodes efficiently.
+  - `SelectRange(startKey int64, endKey int64)`: Facilitates range queries by scanning through the leaf nodes between the specified start and end keys.
+
+### Key Operations and Functions
+1. **Node Insertion:** The insertion process begins with placing the key in the correct position in a leaf node. If the node overflows, it is split, and the median key is passed up to the parent. This cascading split process ensures that the tree remains balanced. Functions such as `insert()` and `insertSplit()` in the `leafNode.go` and `internalNode.go` files, respectively, handle these operations.
+
+2. **Node Splitting:** Splitting a node occurs when the number of keys exceeds the capacity of the node. The `split()` function in both the leaf and internal node files handles this by dividing the node’s entries into two parts, pushing the median key upwards. The newly created node is then linked to the original one via sibling pointers in leaf nodes.
+
+3. **Cursor Operations:** The B+ Tree uses a cursor abstraction to optimize linear scans. A cursor points to a specific entry in a leaf node, and it can move to the next entry in the sequence using the `Next()` function. This simplifies traversing through the tree for range queries and improves the efficiency of data retrieval. The cursor.go file implements functions like `CursorAtStart()` and `Next()`, which allow seamless movement through the leaf nodes.
+
+
 ## Hashing
 The hashing component of this project involves implementing an **_extendible hash table_**, which is a dynamic hashing scheme designed for efficient key-value storage and retrieval. It allows for adaptive resizing to handle increased data volume while maintaining efficient operations. The implementation spans across multiple files, primarily focusing on `pkg/hash/bucket.go` and `pkg/hash/hashTable.go`, and involves core operations such as insertion, splitting, and data retrieval.
 
